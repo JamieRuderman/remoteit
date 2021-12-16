@@ -6,9 +6,7 @@ import { DeviceSetupItem } from './DeviceSetupItem'
 import { ColumnsDrawer } from './ColumnsDrawer'
 import { FilterDrawer } from './FilterDrawer'
 import { Container } from './Container'
-import { Notice } from './Notice'
 import styles from '../styling'
-import { isUserAccount } from '../models/accounts'
 import analyticsHelper from '../helpers/analyticsHelper'
 
 type Props = {
@@ -17,11 +15,10 @@ type Props = {
   myDevice?: IDevice
 }
 
-export const DevicesHeader: React.FC<Props> = ({ fetching, restore, myDevice, children }) => {
-  const { initialized, loggedInUser, registeredId } = useSelector((state: ApplicationState) => ({
+export const DevicesHeader: React.FC<Props> = ({ fetching, restore, children }) => {
+  const { initialized, registeredId } = useSelector((state: ApplicationState) => ({
     initialized: state.devices.initialized,
     registeredId: state.backend.device.uid,
-    loggedInUser: isUserAccount(state),
   }))
   const css = useStyles()
 
@@ -33,14 +30,11 @@ export const DevicesHeader: React.FC<Props> = ({ fetching, restore, myDevice, ch
     <Container
       header={
         <>
-          {initialized &&
-            (registeredId ? (
-              loggedInUser && !myDevice && <Notice gutterBottom>This device is not registered to you.</Notice>
-            ) : (
-              <List dense disablePadding>
-                <DeviceSetupItem restore={restore} />
-              </List>
-            ))}
+          {initialized && !registeredId && (
+            <List dense disablePadding>
+              <DeviceSetupItem restore={restore} />
+            </List>
+          )}
           {fetching && <LinearProgress className={css.fetching} />}
         </>
       }

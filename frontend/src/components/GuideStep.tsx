@@ -16,6 +16,8 @@ type Props = {
   last?: boolean
   highlight?: boolean
   hideArrow?: boolean
+  showNavigation?: boolean
+  showStart?: boolean
   show?: boolean
   hide?: boolean
 }
@@ -31,14 +33,16 @@ export const GuideStep: React.FC<Props> = ({
   last,
   highlight,
   hideArrow,
+  showNavigation,
+  showStart,
   show,
   hide,
   children,
 }) => {
   const { ui } = useDispatch<Dispatch>()
   const state: IGuide = useSelector((state: ApplicationState) => state.ui[guide])
-  const css = useStyles({ highlight })
   const open = !hide && (state.step === step || !!show) && state.active
+  const css = useStyles({ highlight: highlight && open })
   const start = () => ui.guide({ guide, step, active: true, done: false })
 
   React.useEffect(() => {
@@ -64,24 +68,26 @@ export const GuideStep: React.FC<Props> = ({
             className={css.close}
           />
           <Typography variant="body1">{instructions}</Typography>
-          <Box className={css.nav}>
-            <IconButton
-              icon="angle-left"
-              title="previous"
-              color="white"
-              type="light"
-              disabled={step <= 1}
-              onClick={() => ui.guide({ guide, step: step - 1, back: true })}
-            />
-            <IconButton
-              icon="angle-right"
-              title="next"
-              color="white"
-              type="light"
-              disabled={step >= state.total}
-              onClick={() => ui.guide({ guide, step: step + 1 })}
-            />
-          </Box>
+          {showNavigation && (
+            <Box className={css.nav}>
+              <IconButton
+                icon="angle-left"
+                title="previous"
+                color="white"
+                type="light"
+                disabled={step <= 1}
+                onClick={() => ui.guide({ guide, step: step - 1, back: true })}
+              />
+              <IconButton
+                icon="angle-right"
+                title="next"
+                color="white"
+                type="light"
+                disabled={step >= state.total}
+                onClick={() => ui.guide({ guide, step: step + 1 })}
+              />
+            </Box>
+          )}
           <Typography variant="caption">
             {step} of {state.total}
           </Typography>
@@ -93,7 +99,7 @@ export const GuideStep: React.FC<Props> = ({
         onClick={() => autoNext && ui.guide({ guide, step: last ? 0 : step + 1, done: last })}
         component={component}
       >
-        {step === 1 && (
+        {showStart && (
           <IconButton
             icon="sparkles"
             title={state.title || 'Start guide'}

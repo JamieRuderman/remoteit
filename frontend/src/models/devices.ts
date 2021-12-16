@@ -5,17 +5,19 @@ import {
   graphQLUpdateService,
   graphQLRemoveService,
   graphQLSetDeviceNotification,
+  graphQLTransferDevice,
 } from '../services/graphQLMutation'
 import { graphQLFetchDevices, graphQLFetchDevice, graphQLAdaptor } from '../services/graphQLDevice'
+import { getLocalStorage, setLocalStorage } from '../services/Browser'
 import { cleanOrphanConnections, getConnectionIds } from '../helpers/connectionHelper'
-import { graphQLGetErrors } from '../services/graphQL'
 import { getActiveAccountId, getAllDevices } from './accounts'
 import { r3, hasCredentials } from '../services/remote.it'
+import { graphQLGetErrors } from '../services/graphQL'
 import { ApplicationState } from '../store'
+import { AxiosResponse } from 'axios'
 import { createModel } from '@rematch/core'
 import { RootModel } from './rootModel'
 import { apiError } from '../helpers/apiHelper'
-import { getLocalStorageByUser, setLocalStorageByUser } from '../services/Browser'
 
 const SAVED_STATES = ['filter', 'sort', 'owner', 'platform', 'sortServiceOption']
 
@@ -36,17 +38,18 @@ type IDeviceState = {
   fetching: boolean
   fetchingMore: boolean
   destroying: boolean // fixme - move to ui model
+  transferring: boolean
   query: string
   append: boolean
   filter: 'all' | 'active' | 'inactive'
   sort: 'name' | '-name' | 'state' | '-state' | 'color' | '-color'
   owner: 'all' | 'me' | 'others'
-  platform?: number
+  platform: number[] | undefined
   size: number
   from: number
   contacts: IUserRef[]
   eventsUrl: string
-  sortServiceOption?: 'ATOZ' | 'ZTOA' | 'NEWEST' | 'OLDEST'
+  sortServiceOption: 'ATOZ' | 'ZTOA' | 'NEWEST' | 'OLDEST'
   userAttributes: string[]
 }
 
@@ -59,6 +62,7 @@ export const defaultState: IDeviceState = {
   fetching: true,
   fetchingMore: false,
   destroying: false,
+  transferring: false,
   query: '',
   append: false,
   filter: 'all',
@@ -79,7 +83,7 @@ export default createModel<RootModel>()({
     async init(_, state) {
       let states = {}
       SAVED_STATES.forEach(key => {
-        const value = getLocalStorageByUser(state, `device-${key}`)
+        const value = getLocalStorage(state, `device-${key}`)
         if (value) states[key] = value
       })
       dispatch.devices.set(states)
@@ -90,6 +94,7 @@ export default createModel<RootModel>()({
     async fetch(optionalAccountId?: string, globalState?) {
       const accountId: string = optionalAccountId || getActiveAccountId(globalState)
       const userId = globalState.auth.user?.id
+      const ids = globalState.backend.device.uid ? [globalState.backend.device.uid] : []
       if (!userId) return console.error('NO AUTH USER ID')
       if (!accountId) return console.error('FETCH WITH MISSING ACCOUNT ID')
       const { updateSearch } = dispatch.search
@@ -102,7 +107,7 @@ export default createModel<RootModel>()({
         account: accountId,
         state: filter === 'all' ? undefined : filter,
         name: query,
-        ids: append ? undefined : getConnectionIds(globalState),
+        ids: append ? undefined : ids.concat(getConnectionIds(globalState)),
         sort,
         owner: owner === 'all' ? undefined : owner === 'me',
         platform,
@@ -134,7 +139,7 @@ export default createModel<RootModel>()({
     /*
       Fetches a single device and merges in the state
     */
-    async fetchSingle({ id, hidden, thisDevice }: IGetDevice, globalState: any): Promise<IDevice | undefined> {
+    async fetchSingle({ id, hidden, thisDevice }: IGetDevice, globalState): Promise<IDevice | undefined> {
       const { set } = dispatch.devices
       const device = selectDevice(globalState, id)
       const accountId = device?.accountId || getActiveAccountId(globalState)
@@ -162,10 +167,9 @@ export default createModel<RootModel>()({
     },
 
     async graphQLFetchProcessor(options: gqlOptions) {
-      const { graphQLMetadata } = dispatch.devices as any
       try {
         const gqlResponse = await graphQLFetchDevices(options)
-        const [deviceData, connectionData, total, loginId, contacts, error] = await graphQLMetadata(gqlResponse)
+        const [deviceData, connectionData, total, loginId, contacts, error] = graphQLMetadata(gqlResponse)
         const connections = graphQLAdaptor(connectionData, loginId, options.account, true)
         const devices = graphQLAdaptor(deviceData, loginId, options.account)
         return { devices, connections, total, contacts, error }
@@ -179,15 +183,7 @@ export default createModel<RootModel>()({
       dispatch.accounts.setDevice({ id: device.id, device })
     },
 
-    async graphQLMetadata(gqlData: any) {
-      const error = graphQLGetErrors(gqlData)
-      const total = gqlData?.data?.data?.login?.account?.devices?.total || 0
-      const devices = gqlData?.data?.data?.login?.account?.devices?.items || {}
-      const { connections, contacts, id } = gqlData?.data?.data?.login || {}
-      return [devices, connections, total, id, contacts, error]
-    },
-
-    async renameService(service: IService, globalState: any) {
+    async renameService(service: IService, globalState) {
       let device = getAllDevices(globalState).find((d: IDevice) => d.id === service.deviceID)
       if (!device) return
       const index = device.services.findIndex((s: IService) => s.id === service.id)
@@ -328,9 +324,25 @@ export default createModel<RootModel>()({
 
     async setPersistent(params: DeviceParams, state) {
       Object.keys(params).forEach(key => {
-        if (SAVED_STATES.includes(key)) setLocalStorageByUser(state, `device-${key}`, params[key] || '')
+        if (SAVED_STATES.includes(key)) setLocalStorage(state, `device-${key}`, params[key] || '')
       })
       dispatch.devices.set(params)
+    },
+    async transferDevice(data: ITransferProps) {
+      if (data.email && data.device) {
+        dispatch.devices.set({ transferring: true })
+        try {
+          await graphQLTransferDevice(data)
+          await dispatch.devices.fetch()
+          dispatch.ui.set({
+            successMessage: `"${data.device.name}" was successfully transferred to ${data.email}.`,
+          })
+        } catch (error) {
+          if (error instanceof Error) dispatch.ui.set({ errorMessage: error.message })
+          console.warn(error)
+        }
+        dispatch.devices.set({ transferring: false })
+      }
     },
   }),
 
@@ -348,12 +360,26 @@ export default createModel<RootModel>()({
   },
 })
 
-// const isIService = (instance: any): instance is IService => !!instance?.license
+function graphQLMetadata(gqlData?: AxiosResponse) {
+  const error = graphQLGetErrors(gqlData)
+  const total = gqlData?.data?.data?.login?.account?.devices?.total || 0
+  const devices = gqlData?.data?.data?.login?.account?.devices?.items || {}
+  const { connections, contacts, id } = gqlData?.data?.data?.login || {}
+  return [devices, connections, total, id, contacts, error]
+}
+
+export function selectIsFiltered(state: ApplicationState) {
+  return (
+    state.devices.sort !== defaultState.sort ||
+    state.devices.filter !== defaultState.filter ||
+    state.devices.owner !== defaultState.owner ||
+    state.devices.platform !== defaultState.platform
+  )
+}
 
 export function isOffline(instance?: IDevice | IService, connection?: IConnection) {
   const inactive = instance?.state !== 'active' && !connection?.connected
-  // const unlicensed = isIService(instance) && instance.license === 'UNLICENSED'
-  return inactive //|| unlicensed
+  return inactive
 }
 
 export function selectDevice(state: ApplicationState, deviceId?: string) {
@@ -374,6 +400,7 @@ export function findService(devices: IDevice[], id?: string) {
           service = s
           return true
         }
+        return false
       })
   )
   return [service, device] as [IService | undefined, IDevice | undefined]

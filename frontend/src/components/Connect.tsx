@@ -60,13 +60,7 @@ export const Connect: React.FC = () => {
 
   return (
     <>
-      <ConnectionDetails
-        details
-        connection={connection}
-        service={service}
-        session={session}
-        show={connection?.enabled}
-      />
+      <ConnectionDetails connection={connection} service={service} session={session} show={connection?.enabled} />
       {service.license === 'UNLICENSED' && <LicensingNotice device={device} />}
       <GuideStep
         guide="guideAWS"
@@ -86,7 +80,7 @@ export const Connect: React.FC = () => {
           <ForgetButton connection={connection} inline />
         </Gutters>
       </GuideStep>
-      <List className={css.errorMessage}>
+      <List disablePadding>
         <ConnectionErrorMessage connection={connection} service={service} visible={showError} />
       </List>
       <Gutters>
@@ -102,7 +96,16 @@ export const Connect: React.FC = () => {
               <NameSetting connection={connection} service={service} device={device} />
               <PortSetting connection={connection} service={service} />
             </DesktopUI>
-            <LaunchSelect connection={connection} service={service} />
+            <GuideStep
+              step={1}
+              highlight
+              placement="left"
+              guide="guideLaunch"
+              hide={!accordion[accordionConfig]}
+              instructions="You can now launch services by deep link URL or terminal command."
+            >
+              <LaunchSelect connection={connection} service={service} />
+            </GuideStep>
           </List>
         </AccordionMenuItem>
         <AccordionMenuItem
@@ -137,6 +140,5 @@ const useStyles = makeStyles({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  errorMessage: { padding: 0 },
   gutters: { display: 'flex' },
 })

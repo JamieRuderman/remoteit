@@ -108,8 +108,8 @@ export async function graphQLFetchDevices({
       sort,
       owner,
       account,
-      name: name?.trim() ? name : undefined,
       platform,
+      name: name?.trim() ? name : undefined,
     }
   )
 }
@@ -199,7 +199,6 @@ export function graphQLAdaptor(
       hidden,
     })
   )
-  // console.log('USER ATTRIBUTES', metaData.userAttributes)
   store.dispatch.devices.userAttributes({ userAttributes: metaData.userAttributes })
   return updateConnections(data)
 }

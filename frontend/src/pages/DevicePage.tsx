@@ -1,8 +1,7 @@
 import React, { useEffect } from 'react'
 import { useSelector } from 'react-redux'
 import { ApplicationState } from '../store'
-import { useLocation, useParams } from 'react-router-dom'
-import { REGEX_LAST_PATH } from '../shared/constants'
+import { useLocation } from 'react-router-dom'
 import {
   Typography,
   List,
@@ -18,7 +17,7 @@ import { AddServiceButton } from '../buttons/AddServiceButton'
 import { ListItemLocation } from '../components/ListItemLocation'
 import { ServiceMiniState } from '../components/ServiceMiniState'
 import { AddFromNetwork } from '../components/AddFromNetwork'
-import { optionSortServices, SortServices } from '../components/SortServices'
+import { getSortOptions, SortServices } from '../components/SortServices'
 import { ConnectionStateIcon } from '../components/ConnectionStateIcon'
 import { ServiceContextualMenu } from '../components/ServiceContextualMenu'
 import { LicensingNotice } from '../components/LicensingNotice'
@@ -36,7 +35,6 @@ type Props = {
 export const DevicePage: React.FC<Props> = ({ device }) => {
   const css = useStyles()
   const location = useLocation()
-  const { serviceID } = useParams<{ serviceID?: string }>()
   const { connections, setupAddingService, sortService } = useSelector((state: ApplicationState) => ({
     connections: state.connections.all.filter(c => c.deviceID === device?.id),
     setupAddingService: state.ui.setupAddingService,
@@ -59,10 +57,7 @@ export const DevicePage: React.FC<Props> = ({ device }) => {
 
   // reverse sort services by creation date
   device.services.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-
-  const index = location.pathname.search(REGEX_LAST_PATH)
-  let servicePage = location.pathname.slice(index)
-  if (servicePage === '/' + serviceID || servicePage === '/' + device.id) servicePage = '/connect'
+  let servicePage = '/' + (location.pathname.split('/')[4] || 'connect')
 
   return (
     <Container
@@ -115,7 +110,7 @@ export const DevicePage: React.FC<Props> = ({ device }) => {
             </ListItemSecondaryAction>
           </ListItem>
         )}
-        {device.services.sort(optionSortServices[`${sortService}`].sortService).map(s => (
+        {device.services.sort(getSortOptions(sortService).sortService).map(s => (
           <GuideStep
             key={s.id}
             guide="guideAWS"

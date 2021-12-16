@@ -19,6 +19,7 @@ import { DynamicPanel } from '../components/DynamicPanel'
 import { DevicePage } from '../pages/DevicePage'
 import { SharePage } from '../pages/SharePage'
 import { useDispatch, useSelector } from 'react-redux'
+import { DeviceTransferPage } from '../pages/DeviceTransferPage'
 
 export const DeviceRouter: React.FC<{ singlePanel?: boolean }> = ({ singlePanel }) => {
   const { deviceID } = useParams<{ deviceID?: string }>()
@@ -67,6 +68,9 @@ export const DeviceRouter: React.FC<{ singlePanel?: boolean }> = ({ singlePanel 
           <Route path="/devices/:deviceID/edit">
             <DeviceEditPage targetDevice={targetDevice} device={device} />
           </Route>
+          <Route path="/devices/:deviceID/transfer">
+            <DeviceTransferPage targetDevice={targetDevice} device={device} />
+          </Route>
           <Route path="/devices/:deviceID/users">
             <UsersPageDevice device={device} />
           </Route>
@@ -94,12 +98,7 @@ export const DeviceRouter: React.FC<{ singlePanel?: boolean }> = ({ singlePanel 
           <Route path="/devices/:deviceID/:serviceID/details">
             <ServiceDetailPage targets={targets} device={device} />
           </Route>
-          <Route
-            path={[
-              '/devices/:deviceID/:serviceID/connect/lan',
-              '/devices/:deviceID/new/:deviceID/:serviceID/connect/lan',
-            ]}
-          >
+          <Route path={['/devices/:deviceID/:serviceID/lan', '/devices/:deviceID/:serviceID/connect/lan']}>
             <LanSharePage />
           </Route>
           <Route path={['/devices/:deviceID/:serviceID/connect', '/devices/:deviceID/:serviceID']}>

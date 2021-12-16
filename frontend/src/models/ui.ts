@@ -1,5 +1,5 @@
 import { createModel } from '@rematch/core'
-import { getLocalStorageByUser, setLocalStorageByUser } from '../services/Browser'
+import { getLocalStorage, setLocalStorage } from '../services/Browser'
 import { RootModel } from './rootModel'
 
 export const DEFAULT_INTERFACE = 'searching'
@@ -38,6 +38,7 @@ type UIState = {
   navigationBack: string[]
   navigationForward: string[]
   guideAWS: IGuide
+  guideLaunch: IGuide
   accordion: ILookup<boolean>
   autoLaunch: boolean
 }
@@ -72,10 +73,11 @@ const defaultState: UIState = {
   successMessage: '',
   noticeMessage: '',
   errorMessage: '',
-  panelWidth: { devices: 400, connections: 550, settings: 350 },
+  panelWidth: { devices: 400, connections: 500, settings: 350 },
   navigationBack: [],
   navigationForward: [],
-  guideAWS: { title: 'AWS Guide', step: 0, total: 7 },
+  guideAWS: { title: 'AWS Guide', step: 1, total: 7 },
+  guideLaunch: { title: 'Launch Guide', active: true, step: 1, total: 1 },
   accordion: { config: true, configConnected: false },
   autoLaunch: false,
 }
@@ -87,11 +89,8 @@ export default createModel<RootModel>()({
       // restore guides
       const guides = Object.keys(globalState.ui).filter(key => key.startsWith('guide'))
       guides.forEach(guide => {
-        let item = getLocalStorageByUser(globalState, `ui-${guide}`)
-        if (item) {
-          item = JSON.parse(item)
-          dispatch.ui.set({ [guide]: item })
-        }
+        let item = getLocalStorage(globalState, `ui-${guide}`)
+        if (item) dispatch.ui.set({ [guide]: item })
       })
     },
     async setupUpdated(count: number, globalState) {
@@ -122,13 +121,13 @@ export default createModel<RootModel>()({
       }
 
       state = { ...state, ...props }
-      setLocalStorageByUser(globalState, `ui-${guide}`, JSON.stringify(state))
+      setLocalStorage(globalState, `ui-${guide}`, state)
       dispatch.ui.set({ [guide]: state })
     },
 
     async resetGuides(_, globalState) {
       Object.keys(globalState.ui).forEach(key => {
-        if (key.startsWith('guide')) dispatch.ui.guide({ guide: key, step: 0, done: false })
+        if (key.startsWith('guide')) dispatch.ui.guide({ guide: key, ...defaultState[key] })
       })
     },
   }),

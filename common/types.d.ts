@@ -135,6 +135,7 @@ declare global {
     connected?: boolean
     connecting?: boolean
     createdTime?: number // unix timestamp track for garbage cleanup
+    default?: boolean // if the connection is in a default state - gets removed on modification
     deviceID?: string
     disconnecting?: boolean
     enabled?: boolean // if the connection is active
@@ -444,7 +445,7 @@ declare global {
     sort?: string
     name?: string
     ids?: string[]
-    platform?: number
+    platform?: number[]
   }
 
   interface IRegistration {
@@ -526,6 +527,8 @@ declare global {
 
   type ILookup<T> = { [key: string]: T }
 
+  type INumberLookup<T> = { [key: number]: T }
+
   type ISelect = { [key: string]: string | number }
 
   type IGuide = {
@@ -591,6 +594,11 @@ declare global {
       serviceId: string
       action: 'ADD' | 'REMOVE' | string
     }[]
+  }
+
+  type ITransferProps = {
+    device?: IDevice
+    email?: string
   }
 
   type IReachablePort = {

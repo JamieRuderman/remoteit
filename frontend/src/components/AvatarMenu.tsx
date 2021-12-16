@@ -10,10 +10,10 @@ import { DesktopUI } from './DesktopUI'
 import { PortalUI } from './PortalUI'
 import { Avatar } from './Avatar'
 import { emit } from '../services/Controller'
-import { safeWindowOpen } from '../services/Browser'
+import { windowOpen } from '../services/Browser'
 
 export const AvatarMenu: React.FC = () => {
-  const [el, setEl] = React.useState<HTMLButtonElement | null>()
+  const [open, setOpen] = React.useState<boolean>(false)
   const [altMenu, setAltMenu] = React.useState<boolean>(false)
   const buttonRef = React.useRef<HTMLButtonElement>(null)
   const dispatch = useDispatch<Dispatch>()
@@ -26,12 +26,12 @@ export const AvatarMenu: React.FC = () => {
 
   const css = useStyles()
   const handleClose = () => {
-    setEl(null)
+    setOpen(false)
     setAltMenu(false)
   }
   const handleOpen = event => {
     if (event.altKey && event.shiftKey) setAltMenu(true)
-    setEl(buttonRef.current)
+    setOpen(true)
   }
 
   return (
@@ -42,8 +42,8 @@ export const AvatarMenu: React.FC = () => {
         </ButtonBase>
       </Tooltip>
       <Menu
-        open={Boolean(el)}
-        anchorEl={el}
+        open={open}
+        anchorEl={buttonRef.current}
         className={css.menu}
         onClose={handleClose}
         anchorOrigin={{ horizontal: 'left', vertical: 'bottom' }}
@@ -54,17 +54,17 @@ export const AvatarMenu: React.FC = () => {
         <ListItemSetting
           label="Account"
           icon="user"
-          onClick={() => safeWindowOpen('https://link.remote.it/portal/account')}
+          onClick={() => windowOpen('https://link.remote.it/portal/account')}
         />
         <ListItemSetting
           label="Support"
           icon="life-ring"
-          onClick={() => safeWindowOpen('https://link.remote.it/documentation-desktop/overview')}
+          onClick={() => windowOpen('https://link.remote.it/documentation-desktop/overview')}
         />
         <ListItemSetting
           label="Documentation"
           icon="books"
-          onClick={() => safeWindowOpen('https://link.remote.it/docs/api')}
+          onClick={() => windowOpen('https://link.remote.it/docs/api')}
         />
         {altMenu && (
           <ListItemSetting
