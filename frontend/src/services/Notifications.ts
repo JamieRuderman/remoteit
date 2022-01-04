@@ -1,6 +1,8 @@
 import { DEVICE_TYPE } from '../shared/applications'
 import { getTargetPlatform } from '../helpers/platformHelper'
+import { isPortal } from '../services/Browser'
 import { store } from '../store'
+import icon from '../assets/noticeIcon.png'
 
 const actions = {
   active: 'came online',
@@ -9,17 +11,9 @@ const actions = {
   disconnected: 'disconnected',
 }
 
-export function notify(event: ICloudEvent) {
-  const target = event.target[0]
-
-  let onlineDeviceNotification
-  if (typeof target?.device?.notificationSettings.desktopNotifications === 'boolean') {
-    onlineDeviceNotification = !!target?.device?.notificationSettings.desktopNotifications
-  } else {
-    onlineDeviceNotification = !!event?.metadata?.desktopNotifications
-  }
-
-  if (!onlineDeviceNotification) return
+export async function notify(event: ICloudEvent) {
+  if (!showNotice(event)) return
+  await checkNotificationPermission()
 
   switch (event.type) {
     case 'DEVICE_STATE':
@@ -68,7 +62,28 @@ function connectNotification(event: ICloudEvent) {
 }
 
 function createNotification({ title, body, id }: { title: string; body: string; id: string }) {
-  const notification = new Notification(title, { body })
+  const notification = new Notification(title, { body, icon: isPortal() ? icon : undefined })
   notification.onclick = () => store.dispatch.ui.set({ redirect: `/devices/${id}` })
   notification.onclose = e => e.preventDefault()
+}
+
+function showNotice(event: ICloudEvent) {
+  const target = event.target[0]
+  let show
+
+  if (typeof target?.device?.notificationSettings.desktopNotifications === 'boolean') {
+    show = !!target?.device?.notificationSettings.desktopNotifications
+  } else {
+    show = !!event?.metadata?.desktopNotifications
+  }
+
+  return show
+}
+
+async function checkNotificationPermission() {
+  console.log('NOTIFICATION PERMISSION', Notification.permission)
+  if (Notification.permission === 'granted') return
+
+  const permission = await Notification.requestPermission()
+  if (permission === 'granted') console.log('User granted notification permission')
 }

@@ -9,6 +9,8 @@ import { emit } from '../services/Controller'
 import sleep from '../services/sleep'
 import analyticsHelper from '../helpers/analyticsHelper'
 
+const NOTICE_VERSION_ID = 'notice-version'
+
 type IBackendState = {
   initialized: boolean
   device: ITargetDevice
@@ -71,8 +73,8 @@ const state: IBackendState = {
 export default createModel<RootModel>()({
   state,
   effects: dispatch => ({
-    async initialized(result: boolean, globalState) {
-      dispatch.backend.set({ initialized: result })
+    async initialized() {
+      dispatch.backend.set({ initialized: true })
     },
     async targetDeviceUpdated(targetDevice: ITargetDevice, globalState) {
       const { ui, backend, devices } = dispatch
@@ -179,8 +181,6 @@ export default createModel<RootModel>()({
     },
   },
 })
-
-const NOTICE_VERSION_ID = 'notice-version'
 
 export function selectUpdateNotice(state: ApplicationState) {
   const { updateReady } = state.backend

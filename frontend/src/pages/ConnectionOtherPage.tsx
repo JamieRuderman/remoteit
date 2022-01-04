@@ -33,7 +33,7 @@ export const ConnectionOtherPage: React.FC = () => {
   return (
     <Container
       gutterBottom
-      backgroundColor={colors.primaryHighlight}
+      backgroundColor="primaryHighlight"
       header={
         <Typography variant="h1" gutterBottom>
           <Title>{session?.target.name}</Title>

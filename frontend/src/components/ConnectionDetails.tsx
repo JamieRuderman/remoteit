@@ -9,7 +9,7 @@ import { useApplication } from '../hooks/useApplication'
 import { DataDisplay } from './DataDisplay'
 import { GuideStep } from './GuideStep'
 import { Gutters } from './Gutters'
-import { colors, spacing } from '../styling'
+import { spacing } from '../styling'
 import { CommandButton } from '../buttons/CommandButton'
 import { CopyButton } from '../buttons/CopyButton'
 
@@ -51,9 +51,8 @@ export const ConnectionDetails: React.FC<Props> = ({ showTitle, show, connection
 
   if (!connection && !session) return null
 
-  const address = app.address.split(':')
-  const name = address[0]
-  const port = address[1]
+  const name = connection?.host
+  const port = connection?.port
 
   const basicDisplay = (
     <div ref={basicRef} className={hover ? css.hide : css.show}>
@@ -135,7 +134,7 @@ export const ConnectionDetails: React.FC<Props> = ({ showTitle, show, connection
                     component="span"
                   >
                     <CommandButton
-                      color="white"
+                      color="alwaysWhite"
                       type="regular"
                       size="lg"
                       connection={connection}
@@ -148,7 +147,7 @@ export const ConnectionDetails: React.FC<Props> = ({ showTitle, show, connection
                   {connection?.host && (
                     <>
                       <CopyButton
-                        color="white"
+                        color="alwaysWhite"
                         icon="i-cursor"
                         type="solid"
                         size="md"
@@ -157,7 +156,7 @@ export const ConnectionDetails: React.FC<Props> = ({ showTitle, show, connection
                         onMouseLeave={() => setHover(undefined)}
                       />
                       <CopyButton
-                        color="white"
+                        color="alwaysWhite"
                         icon="port"
                         type="solid"
                         size="md"
@@ -166,7 +165,7 @@ export const ConnectionDetails: React.FC<Props> = ({ showTitle, show, connection
                         onMouseLeave={() => setHover(undefined)}
                       />
                       <CopyButton
-                        color="white"
+                        color="alwaysWhite"
                         icon="link"
                         size="md"
                         value={app.string}
@@ -185,7 +184,7 @@ export const ConnectionDetails: React.FC<Props> = ({ showTitle, show, connection
                     placement="left"
                   >
                     <LaunchButton
-                      color="white"
+                      color="alwaysWhite"
                       type="solid"
                       size="md"
                       connection={connection}
@@ -210,7 +209,7 @@ export const ConnectionDetails: React.FC<Props> = ({ showTitle, show, connection
   )
 }
 
-const useStyles = makeStyles({
+const useStyles = makeStyles(({ palette }) => ({
   show: {
     opacity: 1,
     position: 'absolute',
@@ -225,7 +224,7 @@ const useStyles = makeStyles({
   },
   active: {
     borderRadius: 4,
-    backgroundColor: colors.darken,
+    backgroundColor: palette.darken.main,
   },
   h3: {
     wordBreak: 'break-word',
@@ -240,12 +239,12 @@ const useStyles = makeStyles({
     '& span': { wordBreak: 'break-word' },
   },
   address: {
-    backgroundColor: colors.primary,
-    color: colors.white,
+    backgroundColor: palette.primary.main,
+    color: palette.alwaysWhite.main,
     padding: spacing.xs,
     borderBottomRightRadius: 0,
     borderBottomLeftRadius: 0,
-    '& label': { color: colors.white },
+    '& label': { color: palette.alwaysWhite.main },
   },
   details: {
     paddingTop: 1,
@@ -257,4 +256,4 @@ const useStyles = makeStyles({
     display: 'flex',
     justifyContent: 'space-between',
   },
-})
+}))
