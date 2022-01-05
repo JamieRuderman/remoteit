@@ -9,7 +9,6 @@ import { NoConnectionPage } from './NoConnectionPage'
 import { InfoButton } from '../buttons/InfoButton'
 import { Container } from '../components/Container'
 import { Title } from '../components/Title'
-import { colors } from '../styling'
 import analyticsHelper from '../helpers/analyticsHelper'
 
 export const ConnectionOtherPage: React.FC = () => {
