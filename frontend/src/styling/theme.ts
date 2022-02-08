@@ -180,7 +180,10 @@ export const jssTheme = (isDark: boolean): ThemeOptions => {
         root: {
           color: palette.grayDarkest.main,
           fontSize: fontSizes.xxs,
-          lineHeight: '40px',
+          lineHeight: `${spacing.xl}px`,
+          textTransform: 'uppercase',
+          letterSpacing: 2,
+          fontWeight: 500,
         },
         sticky: { zIndex: 2 },
       },
@@ -261,6 +264,7 @@ export const jssTheme = (isDark: boolean): ThemeOptions => {
           paddingLeft: 0,
           paddingRight: spacing.lg,
           color: palette.grayDarkest.main,
+          fontSize: fontSizes.base,
           '&:hover, &:focus': { backgroundColor: palette.primaryLighter.main },
         },
         gutters: {
@@ -283,7 +287,7 @@ export const jssTheme = (isDark: boolean): ThemeOptions => {
         },
       },
       MuiInputBase: {
-        input: { paddingTop: spacing.xxs, paddingBottom: spacing.xxs },
+        input: { paddingTop: spacing.xxs, paddingBottom: spacing.xxs, borderRadius: radius },
       },
       MuiInputLabel: {
         shrink: {

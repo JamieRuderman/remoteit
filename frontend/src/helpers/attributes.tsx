@@ -3,7 +3,7 @@ import { TargetPlatform } from '../components/TargetPlatform'
 import { QualityDetails } from '../components/QualityDetails'
 import { ServiceIndicators } from '../components/ServiceIndicators'
 import { INITIATOR_PLATFORMS } from '../components/InitiatorPlatform'
-import { ListItemText } from '@material-ui/core'
+import { ListItemText, Chip } from '@material-ui/core'
 import { ServiceName } from '../components/ServiceName'
 import { LicenseChip } from '../components/LicenseChip'
 import { replaceHost } from '../shared/nameHelper'
@@ -14,7 +14,6 @@ import { Duration } from '../components/Duration'
 import { toLookup } from './utilHelper'
 import { TestUI } from '../components/TestUI'
 import { Tags } from '../components/Tags'
-// type AttributeParams = Omit<Attribute, 'value'>
 
 export class Attribute {
   id: string = ''
@@ -63,7 +62,7 @@ export const attributes: Attribute[] = [
     value: ({ device, connection }) => (
       <ListItemText
         primary={<ServiceName device={device} connection={connection} />}
-        secondary={device?.thisDevice ? 'This device' : undefined}
+        secondary={device?.thisDevice ? 'This system' : undefined}
       />
     ),
     required: true,
@@ -97,6 +96,18 @@ export const attributes: Attribute[] = [
     column: false,
   }),
   new DeviceAttribute({
+    id: 'permissions',
+    label: 'Permissions',
+    value: ({ device }) => {
+      const lookup: ILookup<string> = {
+        CONNECT: 'Connect',
+        SCRIPTING: 'Script',
+        MANAGE: 'Manage',
+      }
+      return device?.permissions.map(p => <Chip label={lookup[p]} size="small" variant="outlined" key={p} />)
+    },
+  }),
+  new DeviceAttribute({
     id: 'owner',
     label: 'Owner',
     value: ({ device }) => device?.owner.email,
@@ -104,7 +115,7 @@ export const attributes: Attribute[] = [
   new DeviceAttribute({
     id: 'lastReported',
     label: 'Last reported',
-    value: ({ device }) => <Duration startDate={device?.lastReported} ago />,
+    value: ({ device }) => (device?.state !== 'active' ? <Duration startDate={device?.lastReported} ago /> : undefined),
   }),
   new DeviceAttribute({ id: 'isp', label: 'ISP', value: ({ device }) => device?.geo?.isp }),
   new DeviceAttribute({
@@ -168,23 +179,24 @@ export const attributes: Attribute[] = [
   }),
   new ServiceAttribute({
     id: 'servicePort',
-    label: 'Remote Port',
+    label: 'Service Port',
     value: ({ service }) => service?.port,
   }),
   new ServiceAttribute({
     id: 'serviceHost',
-    label: 'Remote Host',
+    label: 'Service Host',
     value: ({ service }) => service?.host,
   }),
   new ServiceAttribute({
     id: 'serviceProtocol',
-    label: 'Remote Protocol',
+    label: 'Service Protocol',
     value: ({ service }) => service?.protocol,
   }),
   new ServiceAttribute({
     id: 'serviceLastReported',
     label: 'Last Reported',
-    value: ({ service }) => <Duration startDate={service?.lastReported} ago />,
+    value: ({ service }) =>
+      service?.state !== 'active' ? <Duration startDate={service?.lastReported} ago /> : undefined,
   }),
   new ServiceAttribute({
     id: 'serviceType',
@@ -200,11 +212,6 @@ export const attributes: Attribute[] = [
     id: 'license',
     label: 'License',
     value: ({ service }) => <LicenseChip license={service?.license} />,
-  }),
-  new ConnectionAttribute({
-    id: 'address',
-    label: 'Address',
-    value: ({ connection }) => connection?.address,
   }),
   new ConnectionAttribute({
     id: 'duration',

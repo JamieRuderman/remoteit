@@ -1,4 +1,7 @@
 import {
+  graphQLDeleteDevice,
+  graphQLRemoveDevice,
+  graphQLRename,
   graphQLSetAttributes,
   graphQLClaimDevice,
   graphQLAddService,
@@ -7,11 +10,15 @@ import {
   graphQLSetDeviceNotification,
   graphQLTransferDevice,
 } from '../services/graphQLMutation'
-import { graphQLFetchDevices, graphQLFetchDevice, graphQLAdaptor } from '../services/graphQLDevice'
+import {
+  graphQLFetchDevices,
+  graphQLFetchDevice,
+  graphQLCreateRegistration,
+  graphQLAdaptor,
+} from '../services/graphQLDevice'
 import { getLocalStorage, setLocalStorage } from '../services/Browser'
 import { cleanOrphanConnections, getConnectionIds } from '../helpers/connectionHelper'
-import { getActiveAccountId, getAllDevices } from './accounts'
-import { r3, hasCredentials } from '../services/remote.it'
+import { getActiveAccountId, getAllDevices, getDevices } from './accounts'
 import { graphQLGetErrors } from '../services/graphQL'
 import { ApplicationState } from '../store'
 import { AxiosResponse } from 'axios'
@@ -42,7 +49,7 @@ type IDeviceState = {
   query: string
   append: boolean
   filter: 'all' | 'active' | 'inactive'
-  sort: 'name' | '-name' | 'state' | '-state' | 'color' | '-color'
+  sort: string
   owner: 'all' | 'me' | 'others'
   platform: number[] | undefined
   size: number
@@ -51,6 +58,7 @@ type IDeviceState = {
   eventsUrl: string
   sortServiceOption: 'ATOZ' | 'ZTOA' | 'NEWEST' | 'OLDEST'
   userAttributes: string[]
+  registrationCommand?: string
 }
 
 export const defaultState: IDeviceState = {
@@ -75,6 +83,7 @@ export const defaultState: IDeviceState = {
   eventsUrl: '',
   sortServiceOption: 'ATOZ',
   userAttributes: [],
+  registrationCommand: undefined,
 }
 
 export default createModel<RootModel>()({
@@ -113,8 +122,6 @@ export default createModel<RootModel>()({
         platform,
       }
 
-      if (!(await hasCredentials())) return
-
       set({ fetching: true })
       const { devices, connections, total, contacts, error } = await graphQLFetchProcessor(options)
 
@@ -143,10 +150,8 @@ export default createModel<RootModel>()({
       const { set } = dispatch.devices
       const device = selectDevice(globalState, id)
       const accountId = device?.accountId || getActiveAccountId(globalState)
-
       let result: IDevice | undefined
-
-      if (!(await hasCredentials()) || !id) return
+      if (!id) return
 
       set({ fetching: true })
       try {
@@ -198,12 +203,9 @@ export default createModel<RootModel>()({
     },
 
     async rename({ id, name }: { id: string; name: string }) {
-      try {
-        await r3.post(`/device/name/`, { deviceaddress: id, devicealias: name })
+      const result = await graphQLRename(id, name)
+      if (result !== 'ERROR') {
         await dispatch.devices.fetch()
-      } catch (error) {
-        if (error instanceof Error) dispatch.ui.set({ errorMessage: error.message })
-        console.warn(error)
       }
     },
 
@@ -281,6 +283,7 @@ export default createModel<RootModel>()({
       dispatch.ui.guide({ guide: 'guideAWS', step: 2 })
 
       const result = await graphQLClaimDevice(code)
+      if (globalState.auth.user) await dispatch.accounts.setActive(globalState.auth.user.id)
 
       if (result !== 'ERROR') {
         const device = result?.data?.data?.claimDevice
@@ -293,26 +296,30 @@ export default createModel<RootModel>()({
         dispatch.ui.set({ claiming: false })
       }
 
-      if (globalState.auth.user) await dispatch.accounts.setActive(globalState.auth.user.id.toString())
       dispatch.ui.guide({ guide: 'guideAWS', step: 3 })
+    },
+
+    async createRegistration({ services, accountId }: { services: IApplicationType['id'][]; accountId: string }) {
+      const result = await graphQLCreateRegistration(services, accountId)
+      if (result !== 'ERROR') {
+        const { registrationCommand } = result?.data?.data?.login?.account
+        console.log('CREATE REGISTRATION', registrationCommand)
+        dispatch.devices.set({ registrationCommand })
+      }
     },
 
     async destroy(device: IDevice, globalState) {
       const { auth } = globalState
       dispatch.devices.set({ destroying: true })
-      try {
-        device.shared
-          ? await r3.post(`/developer/device/share/${device.id}/${encodeURIComponent(auth.user?.email || '')}`, {
-              devices: device.id,
-              emails: auth.user?.email,
-              state: 'off',
-              scripting: false,
-            })
-          : await r3.post(`/developer/device/delete/registered/${device.id}`)
+      const result = device.permissions.includes('MANAGE')
+        ? await graphQLDeleteDevice(device.id)
+        : await graphQLRemoveDevice({
+            deviceId: device.id,
+            email: [auth.user?.email || ''],
+          })
+      if (result !== 'ERROR') {
+        await dispatch.connections.clearByDevice(device.id)
         await dispatch.devices.fetch()
-      } catch (error) {
-        if (error instanceof Error) dispatch.ui.set({ errorMessage: error.message })
-        console.warn(error)
       }
       dispatch.devices.set({ destroying: false })
     },
@@ -331,16 +338,12 @@ export default createModel<RootModel>()({
     async transferDevice(data: ITransferProps) {
       if (data.email && data.device) {
         dispatch.devices.set({ transferring: true })
-        try {
-          await graphQLTransferDevice(data)
+        const result = await graphQLTransferDevice(data)
+        if (result !== 'ERROR') {
           await dispatch.devices.fetch()
-          dispatch.ui.set({
-            successMessage: `"${data.device.name}" was successfully transferred to ${data.email}.`,
-          })
-        } catch (error) {
-          if (error instanceof Error) dispatch.ui.set({ errorMessage: error.message })
-          console.warn(error)
+          dispatch.ui.set({ successMessage: `"${data.device.name}" was successfully transferred to ${data.email}.` })
         }
+        await dispatch.connections.clearByDevice(data.device.id)
         dispatch.devices.set({ transferring: false })
       }
     },
@@ -384,6 +387,10 @@ export function isOffline(instance?: IDevice | IService, connection?: IConnectio
 
 export function selectDevice(state: ApplicationState, deviceId?: string) {
   return getAllDevices(state).find(d => d.id === deviceId)
+}
+
+export function selectDeviceByAccount(state: ApplicationState, deviceId?: string, accountId?: string) {
+  return getDevices(state, accountId).find(d => d.id === deviceId)
 }
 
 export function selectById(state: ApplicationState, id?: string) {

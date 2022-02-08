@@ -35,7 +35,7 @@ export default class ElectronApp {
       this.app.quit()
     }
     this.app.setAsDefaultProtocolClient(this.protocol)
-    Logger.info('ELECTRON STARTING UP')
+    Logger.info('ELECTRON STARTING UP', { version: electron.app.getVersion() })
 
     // Windows event
     this.app.on('ready', this.handleAppReady)
@@ -149,6 +149,7 @@ export default class ElectronApp {
       titleBarStyle: 'hiddenInset',
       frame: !environment.isMac,
       autoHideMenuBar: true,
+      webPreferences: { preload: path.join(__dirname, 'preload.js') },
     })
 
     this.window.setVisibleOnAllWorkspaces(true)
@@ -170,9 +171,18 @@ export default class ElectronApp {
       event.preventDefault()
     })
 
-    this.window.webContents.on('new-window', (event, url) => {
-      event.preventDefault()
+    this.window.webContents.setWindowOpenHandler(({ url }) => {
+      // console.log('Open window:', url)
       electron.shell.openExternal(url)
+      return { action: 'deny' }
+    })
+
+    let wc = this.window.webContents
+    wc.on('will-navigate', function (e, url) {
+      if (url != wc.getURL()) {
+        e.preventDefault()
+        electron.shell.openExternal(url)
+      }
     })
 
     this.logWebErrors()
@@ -198,8 +208,10 @@ export default class ElectronApp {
   }
 
   private reload() {
-    if (!this.window) return
-    this.window.webContents.reload()
+    const lastWindow = this.window
+    this.window = undefined
+    this.createMainWindow()
+    lastWindow?.destroy()
   }
 
   private getStartUrl(): string {
@@ -262,6 +274,7 @@ export default class ElectronApp {
       Logger.info('Opening', { url: fullUrl })
       this.window.loadURL(fullUrl)
     } else if (location) {
+      Logger.info('Open location', { location })
       this.window.webContents.executeJavaScript(`window.location.hash="#/${location}"`)
     }
 
