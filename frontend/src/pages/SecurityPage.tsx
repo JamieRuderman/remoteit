@@ -4,7 +4,7 @@ import { Container } from '../components/Container'
 import { Title } from '../components/Title'
 import { Gutters } from '../components/Gutters'
 import { ChangePassword } from '../components/ChangePassword'
-import { MFAPreference } from '../components/MFAPreference'
+import { MFAPreference } from '../components/MFA/MFAPreference'
 import { Dispatch } from '../store'
 import { useDispatch } from 'react-redux'
 import analyticsHelper from '../helpers/analyticsHelper'
@@ -46,7 +46,7 @@ function GlobalSignOut(): JSX.Element {
         <Typography variant="body2">This logs you out of remote.it everywhere you're logged in.</Typography>
       </Gutters>
       <Gutters>
-        <Button color="primary" variant="outlined" onClick={signedOut}>
+        <Button color="primary" variant="outlined" size="small" onClick={signedOut}>
           Sign Out Everywhere
         </Button>
       </Gutters>
