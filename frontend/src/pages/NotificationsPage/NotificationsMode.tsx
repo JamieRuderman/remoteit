@@ -9,15 +9,19 @@ import { Dispatch, ApplicationState } from '../../store'
 import { isWebUri } from 'valid-url'
 
 export const NotificationMode: React.FC = () => {
-  const { notificationUrl, urlNotifications, emailNotifications, desktopNotifications } = useSelector(
+  const { notificationUrl = '', urlNotifications = false, emailNotifications = false, desktopNotifications } = useSelector(
     (state: ApplicationState) => state.auth.notificationSettings
   )
+  const { appRefreshed = false } = useSelector(
+    (state: ApplicationState) => state.ui
+  )
+  
   const dispatch = useDispatch<Dispatch>()
   const { updateUserMetadata } = dispatch.auth
-  const [email, setEmail] = useState<boolean>(emailNotifications || false)
-  const [system, setSystem] = useState<boolean>(desktopNotifications || false)
-  const [webHook, setWebhook] = useState<boolean | undefined>(urlNotifications)
-  const [webHookUrl, setWebhookUrl] = useState(notificationUrl || '')
+  const [email, setEmail] = useState<boolean>(emailNotifications)
+  const [system, setSystem] = useState<boolean>(false)
+  const [webHook, setWebhook] = useState<boolean>(urlNotifications)
+  const [webHookUrl, setWebhookUrl] = useState(notificationUrl)
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState(false)
   const changed = webHookUrl !== notificationUrl
@@ -27,6 +31,34 @@ export const NotificationMode: React.FC = () => {
     urlNotifications: webHook,
     notificationUrl: webHookUrl,
   }
+  
+  React.useEffect(() => {
+    if (appRefreshed) {
+      if (email !== emailNotifications) {
+        setEmail(emailNotifications)
+      }
+      if (webHook !== urlNotifications) {
+        setWebhook(urlNotifications)
+      }
+      if (webHookUrl !== notificationUrl) {
+        setWebhookUrl(notificationUrl)
+      }
+      dispatch.ui.set({ appRefreshed: false })
+    }
+  })
+
+  React.useEffect(() => {
+    setEmail(emailNotifications)
+  }, [emailNotifications]);
+
+  React.useEffect(() => {
+    setWebhook(urlNotifications)
+  }, [urlNotifications]);
+
+  React.useEffect(() => {
+    setWebhookUrl(notificationUrl)
+  }, [notificationUrl]);
+
 
   const onEmailChange = (value: boolean) => {
     setEmail(value)
@@ -64,10 +96,6 @@ export const NotificationMode: React.FC = () => {
     }
   }
 
-  React.useEffect(() => {
-    checkWebHookUrl(webHookUrl)
-  }, [])
-
   return (
     <>
       <List>
@@ -95,7 +123,7 @@ export const NotificationMode: React.FC = () => {
             variant="contained"
             color="primary"
             onClick={onSave}
-            disabled={error || loading || !changed || !webHook}
+            disabled={error || loading || !changed}
             size="small"
           >
             {loading ? 'Saving' : 'Save'}
