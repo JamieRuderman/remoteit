@@ -5,7 +5,7 @@ import { store } from '../store'
 import sleep from './sleep'
 
 let errorCount = 0
-const CLIENT_DEPRECATED = '121'
+const CLIENT_DEPRECATED = 121
 
 export async function graphQLBasicRequest(query: String, variables: ILookup<any> = {}) {
   try {
@@ -57,10 +57,13 @@ export function graphQLGetErrors(response: AxiosResponse | 'ERROR' | void, silen
   const { ui } = store.dispatch
 
   const errors: undefined | { message: string }[] = response?.data?.errors
-  const warning: undefined | string = response?.headers?.['X-R3-Warning']
+  const key: undefined | string = Object.keys(response?.headers).find(
+    header => header.toLocaleLowerCase() === 'x-r3-warning'
+  )
+  const warning: undefined | string = key && response.headers[key]
 
   if (warning) {
-    const code = warning.split(' ')[0]
+    const code = parseInt(warning, 10)
     if (code === CLIENT_DEPRECATED) ui.deprecated()
   }
 
@@ -68,7 +71,6 @@ export function graphQLGetErrors(response: AxiosResponse | 'ERROR' | void, silen
     errors.forEach(error => console.error('graphQL error:', error))
     if (!silent) store.dispatch.ui.set({ errorMessage: 'GraphQL: ' + errors[0].message })
   } else {
-    // console.log('No errors, setting count to 0')
     errorCount = 0 //Set error count back to 0, no errors
   }
 
