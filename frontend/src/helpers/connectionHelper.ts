@@ -1,8 +1,14 @@
 import { emit } from '../services/Controller'
-import { DEFAULT_CONNECTION, REGEX_CONNECTION_NAME, MAX_CONNECTION_NAME_LENGTH, IP_PRIVATE } from '../shared/constants'
+import {
+  DEFAULT_CONNECTION,
+  REGEX_CONNECTION_NAME,
+  REGEX_CONNECTION_TRIM,
+  MAX_CONNECTION_NAME_LENGTH,
+} from '../shared/constants'
 import { getAllDevices, getActiveUser } from '../models/accounts'
 import { ApplicationState, store } from '../store'
 import { combinedName } from '../shared/nameHelper'
+import { isPortal } from '../services/Browser'
 
 export function connectionState(instance?: IService | IDevice, connection?: IConnection): IConnectionState {
   if (instance?.state === 'inactive') return 'offline'
@@ -23,12 +29,12 @@ export function findLocalConnection(state: ApplicationState, id: string, session
 type nameObj = { name: string }
 
 export function sanitizeName(name: string) {
-  return name?.toLowerCase().replace(REGEX_CONNECTION_NAME, '-')
+  return name?.toLowerCase().replace(REGEX_CONNECTION_NAME, '-').replace(REGEX_CONNECTION_TRIM, '')
 }
 
 export function connectionName(service?: nameObj, device?: nameObj): string {
   let name = sanitizeName(combinedName(service, device))
-  if (name.length > MAX_CONNECTION_NAME_LENGTH) name = name.substr(0, MAX_CONNECTION_NAME_LENGTH)
+  if (name.length > MAX_CONNECTION_NAME_LENGTH) name = name.substring(0, MAX_CONNECTION_NAME_LENGTH)
   return name
 }
 
@@ -52,11 +58,16 @@ export function newConnection(service?: IService | null) {
     connection.deviceID = service.deviceID
     connection.online = service.state === 'active'
     connection.typeID = service.typeID
-    connection.targetHost = service?.host || IP_PRIVATE
+    connection.targetHost = service.attributes.targetHost
+    connection.description = service.attributes.description
     if (device) connection.name = connectionName(service, device)
   }
 
   return connection
+}
+
+export function launchDisabled(connection: IConnection) {
+  return connection.launchType === 'COMMAND' && isPortal()
 }
 
 export function setConnection(connection: IConnection) {
@@ -131,7 +142,10 @@ export function cleanOrphanConnections(ids?: string[]) {
     .flat()
   if (!state.ui.offline && services.length) {
     state.connections.all.forEach(c => {
-      if (ids.includes(c.id) && !services.includes(c.id)) store.dispatch.connections.forget(c.id)
+      if (ids.includes(c.id) && !services.includes(c.id)) {
+        store.dispatch.connections.forget(c.id)
+        console.log('FORGET ORPHANED CONNECTION', c)
+      }
     })
   }
 }

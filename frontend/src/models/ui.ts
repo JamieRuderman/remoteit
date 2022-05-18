@@ -2,26 +2,48 @@ import { emit } from '../services/Controller'
 import { Theme } from '@material-ui/core'
 import { RootModel } from './rootModel'
 import { createModel } from '@rematch/core'
-import { selectTheme } from '../styling/theme'
+import { selectTheme, isDarkMode } from '../styling/theme'
 import { getLocalStorage, setLocalStorage, isElectron, isHeadless } from '../services/Browser'
 
 export const DEFAULT_INTERFACE = 'searching'
-const SAVED_STATES = ['guideAWS', 'guideLaunch', 'themeMode', 'drawerMenu', 'columns', 'columnWidths']
+
+const SAVED_STATES = [
+  'guideAWS',
+  'guideLaunch',
+  'themeMode',
+  'accordion',
+  'drawerMenu',
+  'drawerAccordion',
+  'columns',
+  'columnWidths',
+  'limitsOverride',
+]
 
 type UIState = {
   theme: Theme
   themeMode: 'light' | 'dark' | 'system'
+  themeDark: boolean
   navigation: ILookup<string>
+  silent: boolean
+  selected: IDevice['id'][]
   connected: boolean
   offline: boolean
   uninstalling: boolean
   claiming: boolean
+  fetching: boolean
+  destroying: boolean
+  transferring: boolean
   routingLock?: IRouteType
   routingMessage?: string
+  sidebarMenu: boolean
   drawerMenu: 'FILTER' | 'COLUMNS' | null
+  drawerAccordion: string | number
   columns: string[]
   columnWidths: ILookup<number>
+  limitsOverride: ILookup<boolean>
   serviceContextMenu?: IContextMenu
+  globalTooltip?: IGlobalTooltip
+  registrationCommand?: string
   redirect?: string
   restoring: boolean
   scanEnabled: boolean
@@ -55,17 +77,28 @@ type UIState = {
 export const defaultState: UIState = {
   theme: selectTheme(),
   themeMode: 'system',
+  themeDark: isDarkMode(),
   navigation: {},
+  silent: false,
+  selected: [],
   connected: false,
-  offline: false,
+  offline: !navigator.onLine,
   uninstalling: false,
   claiming: false,
+  fetching: false,
+  destroying: false,
+  transferring: false,
   routingLock: undefined,
   routingMessage: undefined,
+  sidebarMenu: false,
   drawerMenu: null,
-  columns: ['deviceName', 'services'],
+  drawerAccordion: 'sort',
+  columns: ['deviceName', 'status', 'tags', 'services'],
   columnWidths: {},
+  limitsOverride: {},
   serviceContextMenu: undefined,
+  globalTooltip: undefined,
+  registrationCommand: undefined,
   redirect: undefined,
   restoring: false,
   scanEnabled: true,
@@ -85,12 +118,12 @@ export const defaultState: UIState = {
   successMessage: '',
   noticeMessage: '',
   errorMessage: '',
-  panelWidth: { devices: 400, connections: 500, settings: 350 },
+  panelWidth: { devices: 400, connections: 500, settings: 350, account: 350, organization: 350 },
   navigationBack: [],
   navigationForward: [],
-  guideAWS: { title: 'AWS Guide', step: 1, total: 7 },
-  guideLaunch: { title: 'Launch Guide', active: true, step: 1, total: 1 },
-  accordion: { config: true, configConnected: false },
+  guideAWS: { title: 'AWS Guide', step: 1, total: 5 },
+  guideLaunch: { title: 'Launch Guide', active: false, step: 1, total: 1 },
+  accordion: { config: true, configConnected: false, options: false, service: false },
   autoConnect: false,
   autoLaunch: false,
   autoCopy: false,
@@ -99,19 +132,19 @@ export const defaultState: UIState = {
 export default createModel<RootModel>()({
   state: { ...defaultState },
   effects: dispatch => ({
-    async init(_, globalState) {
+    async init() {
       // add color scheme listener
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
         dispatch.ui.setTheme(undefined)
       })
-
-      // restore state
+      await dispatch.ui.restoreState()
+    },
+    async restoreState(_, globalState) {
       let states: ILookup<any> = {}
       SAVED_STATES.forEach(key => {
         const value = getLocalStorage(globalState, `ui-${key}`)
         if (value) states[key] = value
       })
-
       dispatch.ui.set(states)
       dispatch.ui.setTheme(states.themeMode)
     },
@@ -122,18 +155,24 @@ export default createModel<RootModel>()({
       }
     },
     async refreshAll() {
-      dispatch.devices.set({ from: 0 })
-      dispatch.accounts.fetch()
-      dispatch.organization.fetch()
-      dispatch.sessions.fetch()
-      dispatch.licensing.fetch()
-      dispatch.announcements.fetch()
-      dispatch.devices.fetch()
+      dispatch.ui.set({ fetching: true })
+      await dispatch.devices.set({ from: 0 })
+      await dispatch.accounts.fetch()
+      await dispatch.devices.fetch()
+      await dispatch.devices.fetchConnections()
+      await Promise.all([
+        dispatch.sessions.fetch(),
+        dispatch.tags.fetch(),
+        dispatch.plans.fetch(),
+        dispatch.organization.fetch(),
+        dispatch.announcements.fetch(),
+      ])
+      dispatch.ui.set({ fetching: false })
     },
     async setTheme(themeMode: UIState['themeMode'] | undefined, globalState) {
       themeMode = themeMode || globalState.ui.themeMode
       dispatch.ui.setPersistent({ themeMode })
-      dispatch.ui.set({ theme: selectTheme(themeMode) })
+      dispatch.ui.set({ theme: selectTheme(themeMode), themeDark: isDarkMode(themeMode) })
     },
     async resizeColumn(params: { id: string; width: number }, globalState) {
       const columnWidths = { ...globalState.ui.columnWidths, [params.id]: params.width }
@@ -158,6 +197,10 @@ export default createModel<RootModel>()({
       Object.keys(globalState.ui).forEach(key => {
         if (key.startsWith('guide')) dispatch.ui.guide({ guide: key, ...defaultState[key] })
       })
+    },
+    async accordion(params: ILookup<boolean>, state) {
+      const accordion = { ...state.ui.accordion, ...params }
+      dispatch.ui.setPersistent({ accordion })
     },
     async setPersistent(params: ILookup<any>, state) {
       Object.keys(params).forEach(key => {
@@ -184,10 +227,6 @@ export default createModel<RootModel>()({
       state.setupAddingService = false
       state.setupServiceBusy = undefined
       state.restoring = false
-      return state
-    },
-    accordion(state: UIState, params: ILookup<boolean>) {
-      state.accordion = { ...state.accordion, ...params }
       return state
     },
     reset(state: UIState) {

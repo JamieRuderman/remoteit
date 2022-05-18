@@ -10,19 +10,18 @@ import { getEnvironment, isPortal } from '../sharedAdaptor'
 
 export const DEVICE_TYPE = 35
 
-export enum LAUNCH_TYPE {
-  URL = 'URL',
-  COMMAND = 'COMMAND',
-}
+export type LAUNCH_TYPE = 'COMMAND' | 'URL'
 
 export class Application {
   title: string = ''
   launchIcon: string = 'launch'
   commandIcon: string = 'terminal'
-  defaultLaunchType: LAUNCH_TYPE = LAUNCH_TYPE.URL
+  defaultLaunchType: LAUNCH_TYPE = 'URL'
+  windowsLaunchType: LAUNCH_TYPE = 'COMMAND'
   reverseProxyTemplate: string = 'https://[host]'
   defaultLaunchTemplate: string = 'http://[host]:[port]'
   defaultCommandTemplate: string = '[host]:[port]'
+  windowsCommandTemplate?: string
   defaultAppTokens: string[] = ['host', 'port', 'id']
   defaultTokenData: ILookup<string> = {}
   localhost?: boolean
@@ -35,6 +34,15 @@ export class Application {
   REGEX_PARSE: RegExp = /\[[^\W\[\]]+\]/g
 
   constructor(options: { [key in keyof Application]?: any }) {
+    const { os } = getEnvironment()
+    if (os === 'windows') {
+      options.defaultLaunchType = options.windowsLaunchType || options.defaultLaunchType || this.windowsLaunchType
+      options.defaultCommandTemplate =
+        options.windowsCommandTemplate ||
+        options.defaultCommandTemplate ||
+        this.windowsCommandTemplate ||
+        this.defaultCommandTemplate
+    }
     Object.assign(this, options)
   }
 
@@ -46,16 +54,21 @@ export class Application {
     return this.parse(this.template, { ...this.lookup, ...data })
   }
 
+  get canLaunch() {
+    const { portal } = getEnvironment()
+    return !(portal && this.launchType === 'COMMAND')
+  }
+
   get icon() {
-    return this.launchType === LAUNCH_TYPE.COMMAND ? this.commandIcon : this.launchIcon
+    return this.launchType === 'COMMAND' ? this.commandIcon : this.launchIcon
   }
 
   get templateKey() {
-    return this.launchType === LAUNCH_TYPE.COMMAND ? 'commandTemplate' : 'launchTemplate'
+    return this.launchType === 'COMMAND' ? 'commandTemplate' : 'launchTemplate'
   }
 
   get contextTitle() {
-    return this.launchType === LAUNCH_TYPE.COMMAND ? this.commandTitle : this.launchTitle
+    return this.launchType === 'COMMAND' ? this.commandTitle : this.launchTitle
   }
 
   get commandTitle() {
@@ -67,13 +80,11 @@ export class Application {
   }
 
   get defaultTemplate() {
-    return this.launchType === LAUNCH_TYPE.COMMAND
-      ? this.resolvedDefaultCommandTemplate
-      : this.resolvedDefaultLaunchTemplate
+    return this.launchType === 'COMMAND' ? this.resolvedDefaultCommandTemplate : this.resolvedDefaultLaunchTemplate
   }
 
   get template() {
-    return this.launchType === LAUNCH_TYPE.COMMAND ? this.commandTemplate : this.launchTemplate
+    return this.launchType === 'COMMAND' ? this.commandTemplate : this.launchTemplate
   }
 
   get launchTemplate() {
@@ -157,7 +168,7 @@ export class Application {
     this.allTokens.forEach(token => {
       if (lookup[token]) {
         const search = new RegExp(`\\[${token}\\]`, 'g')
-        const replace = this.launchType === LAUNCH_TYPE.URL ? encodeURI(lookup[token]) : lookup[token]
+        const replace = this.launchType === 'URL' ? encodeURI(lookup[token]) : lookup[token]
         template = template.replace(search, replace)
       }
     })
@@ -182,31 +193,35 @@ export function getApplication(service?: IService, connection?: IConnection) {
 }
 
 function getApplicationType(typeId: number | undefined) {
-  const { os } = getEnvironment()
   switch (typeId) {
     case 4:
       return new Application({
         title: 'VNC',
         launchIcon: 'desktop',
-        defaultLaunchType: os === 'windows' ? LAUNCH_TYPE.COMMAND : LAUNCH_TYPE.URL,
+        defaultLaunchType: 'COMMAND',
+        windowsLaunchType: 'COMMAND',
         defaultLaunchTemplate: 'vnc://[username]@[host]:[port]',
-        defaultCommandTemplate: os === 'windows' ? '"[path]" -Username [username] [host]:[port]' : '',
+        defaultCommandTemplate: '[path] -Username [username] [host]:[port]',
+        windowsCommandTemplate: '"[path]" -Username [username] [host]:[port]',
       })
     case 28:
       return new Application({
         title: 'SSH',
-        defaultLaunchType: os === 'windows' ? LAUNCH_TYPE.COMMAND : LAUNCH_TYPE.URL,
+        defaultLaunchType: 'URL',
+        windowsLaunchType: 'COMMAND',
         defaultLaunchTemplate: 'ssh://[username]@[host]:[port]',
-        defaultCommandTemplate:
-          os === 'windows' ? 'start cmd /k ssh [username]@[host] -p [port]' : 'ssh -l [username] [host] -p [port]',
+        defaultCommandTemplate: 'ssh -l [username] [host] -p [port]',
+        windowsCommandTemplate: 'start cmd /k ssh [username]@[host] -p [port]',
         defaultTokenData: { path: 'putty.exe' },
       })
     case 5:
       return new Application({
-        title: 'Remote Desktop',
-        defaultLaunchType: os === 'windows' ? LAUNCH_TYPE.COMMAND : LAUNCH_TYPE.URL,
+        title: 'RDP',
+        defaultLaunchType: 'URL',
+        windowsLaunchType: 'COMMAND',
         defaultLaunchTemplate: 'rdp://[username]@[host]:[port]',
-        defaultCommandTemplate: os === 'windows' ? 'mstsc /v: [host]:[port]' : '[host]:[port]',
+        defaultCommandTemplate: '[host]:[port]',
+        windowsCommandTemplate: 'mstsc /v: [host]:[port]',
       })
     case 8:
     case 10:

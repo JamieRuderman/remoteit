@@ -97,12 +97,21 @@ export async function graphQLShareDevice(params: IShareProps) {
   )
 }
 
-export async function graphQLSetOrganization(name: string) {
+export async function graphQLSetOrganization(params: IOrganizationSettings) {
   return await graphQLBasicRequest(
-    ` mutation query($name: String!) {
-        setOrganization(name: $name)
+    ` mutation query($accountId: String, $name: String, $domain: String, $providers: [AuthenticationProvider!]) {
+        setOrganization(accountId: $accountId, name: $name, domain: $domain, providers: $providers)
       }`,
-    { name }
+    params
+  )
+}
+
+export async function graphQLSetSAML(params: { enabled: boolean; metadata?: string }) {
+  return await graphQLBasicRequest(
+    ` mutation query($enabled: Boolean, $metadata: String) {
+        configureSAML(enabled: $enabled, metadata: $metadata)
+      }`,
+    params
   )
 }
 
@@ -114,12 +123,26 @@ export async function graphQLRemoveOrganization() {
   )
 }
 
-export async function graphQLSetMembers(email: string[], role: IOrganizationRole, license?: ILicenseTypes) {
+export async function graphQLSetMembers(
+  email: string[],
+  accountId?: string,
+  roleId?: IOrganizationRoleIdType,
+  license?: ILicenseTypes
+) {
   return await graphQLBasicRequest(
-    ` mutation query($email: [String!]!, $role: OrganizationRole, $license: LicenseOption) {
-        setMember(email: $email, role: $role, license: $license)
+    ` mutation query($accountId: String, $email: [String!]!, $roleId: ID, $license: LicenseOption) {
+        setMember(accountId: $accountId, email: $email, roleId: $roleId, license: $license)
       }`,
-    { email, role, license }
+    { accountId, email, roleId, license }
+  )
+}
+
+export async function graphQLRemoveMembers(email: string[], accountId?: string) {
+  return await graphQLBasicRequest(
+    ` mutation query($accountId: String, $email: [String!]!) {
+        removeMember(accountId: $accountId, email: $email)
+      }`,
+    { accountId, email }
   )
 }
 
@@ -132,15 +155,24 @@ export async function graphQLLeaveMembership(id: string) {
   )
 }
 
-export async function graphQLClaimDevice(code: string) {
+export async function graphQLClaimDevice(code: string, accountId?: string) {
   return await graphQLBasicRequest(
-    ` mutation query($code: String!) {
-        claimDevice(code: $code) {
+    ` mutation query($code: String!, $accountId: String) {
+        claimDevice(code: $code, accountId: $accountId) {
           id
           name
         }
       }`,
-    { code }
+    { code, accountId }
+  )
+}
+
+export async function graphQLConfigureSAML(params: { enabled: boolean; metadata: string }) {
+  return await graphQLBasicRequest(
+    ` mutation query($enabled: Boolean!, $metadata: String!)) {
+        configureSAML(enabled: $enabled, metadata: $metadata)
+      }`,
+    params
   )
 }
 
@@ -173,10 +205,10 @@ export async function graphQLCreditCard() {
   )
 }
 
-export async function graphQLUpdateSubscription(params: { priceId: string; quantity: number }) {
+export async function graphQLUpdateSubscription(params: { priceId: string; quantity: number; accountId: string }) {
   return await graphQLBasicRequest(
-    ` mutation query($priceId: String!, $quantity: Int) {
-        updateSubscription(priceId: $priceId, quantity: $quantity)
+    ` mutation query($priceId: String!, $quantity: Int, $accountId: String!) {
+        updateSubscription(priceId: $priceId, quantity: $quantity, accountId: $accountId)
       }`,
     params
   )
@@ -241,6 +273,91 @@ export async function graphQLReadNotice(id: string) {
         readNotice(id: $id)
       }`,
     { id }
+  )
+}
+
+export async function graphQLCreateRole(params: ICreateRole) {
+  return await graphQLBasicRequest(
+    ` mutation query($name: String, $grant: [RolePermission!], $revoke: [RolePermission!], $tag: ListFilter, $accountId: String) {
+        createRole(name: $name, grant: $grant, revoke: $revoke, tag: $tag, accountId: $accountId) {
+          id
+        }
+      }`,
+    params
+  )
+}
+
+export async function graphQLUpdateRole(params: ICreateRole) {
+  return await graphQLBasicRequest(
+    ` mutation query($id: String!, $name: String, $grant: [RolePermission!], $revoke: [RolePermission!], $tag: ListFilter, $accountId: String) {
+        updateRole(id: $id, name: $name, grant: $grant, revoke: $revoke, tag: $tag, accountId: $accountId) {
+          id
+        }
+      }`,
+    params
+  )
+}
+
+export async function graphQLRemoveRole(id: string, accountId: string) {
+  return await graphQLBasicRequest(
+    ` mutation query($id: String!, $accountId: String) {
+        deleteRole(id: $id, accountId: $accountId)
+      }`,
+    { id, accountId }
+  )
+}
+
+export async function graphQLSetTag(tag: { name: string; color: number }, accountId: string) {
+  return await graphQLBasicRequest(
+    ` mutation query($tag: [TagInput!]!, $accountId: String) {
+        setTag(tag: $tag, accountId: $accountId)
+      }`,
+    { tag, accountId }
+  )
+}
+
+export async function graphQLAddTag(serviceId: string | string[], name: string, accountId: string) {
+  return await graphQLBasicRequest(
+    ` mutation query($serviceId: [String!]!, $name: [String!]!, $accountId: String) {
+        addTag(serviceId: $serviceId, name: $name, accountId: $accountId)
+    }`,
+    { serviceId, name, accountId }
+  )
+}
+
+export async function graphQLRemoveTag(serviceId: string | string[], name: string, accountId: string) {
+  return await graphQLBasicRequest(
+    ` mutation query($serviceId: [String!]!, $name: [String!]!, $accountId: String) {
+        removeTag(serviceId: $serviceId, name: $name, accountId: $accountId)
+    }`,
+    { serviceId, name, accountId }
+  )
+}
+
+export async function graphQLRenameTag(from: string, to: string, accountId: string) {
+  return await graphQLBasicRequest(
+    ` mutation query($from: String!, $to: String!, $accountId: String) {
+        renameTag(from: $from, to: $to, accountId: $accountId)
+    }`,
+    { from, to, accountId }
+  )
+}
+
+export async function graphQLMergeTag(from: string, to: string, accountId: string) {
+  return await graphQLBasicRequest(
+    ` mutation query($from: String!, $to: String!, $accountId: String) {
+        mergeTag(from: $from, to: $to, accountId: $accountId)
+    }`,
+    { from, to, accountId }
+  )
+}
+
+export async function graphQLDeleteTag(name: string, accountId: string) {
+  return await graphQLBasicRequest(
+    ` mutation query($name: [String!]!, $accountId: String) {
+        deleteTag(name: $name, accountId: $accountId)
+      }`,
+    { name, accountId }
   )
 }
 

@@ -2,23 +2,25 @@ import React from 'react'
 import { List, ListItem, Tooltip } from '@material-ui/core'
 import { fontSizes } from '../../styling'
 import { makeStyles } from '@material-ui/core/styles'
-import { Attribute } from '../../helpers/attributes'
+import { Attribute } from '../Attributes'
 import { Icon } from '../Icon'
 
 type Props = IDataOptions & {
   attributes: Attribute[]
+  limits?: ILookup<boolean>
   device?: IDevice
   service?: IService
   disablePadding?: boolean
   width?: number
 }
 
-export const DataDisplay: React.FC<Props> = ({ attributes, width = 140, disablePadding, ...props }) => {
+export const DataDisplay: React.FC<Props> = ({ attributes, limits, width = 140, disablePadding, ...props }) => {
   const css = useStyles(width)()
   if (!props) return null
   return (
     <List className={css.list} disablePadding={disablePadding}>
       {attributes.map(attribute => {
+        if (limits && !attribute.show(limits)) return null
         const value = attribute.value(props)
         return (
           value != null && (
@@ -41,14 +43,14 @@ export const DataDisplay: React.FC<Props> = ({ attributes, width = 140, disableP
 }
 
 const useStyles = minWidth =>
-  makeStyles( ({ palette }) => ({
+  makeStyles(({ palette }) => ({
     list: { width: '100%' },
     item: {
       padding: `4px 0`,
       fontSize: fontSizes.sm,
       fontFamily: 'Roboto Mono',
       color: palette.grayDarker.main,
-      alignItems: 'start',
+      '& > :first-child': { alignSelf: 'start' },
       '& > span': {
         fontFamily: 'Roboto',
         color: palette.grayDark.main,

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { useParams, useLocation } from 'react-router-dom'
+import { getDeviceModel } from '../models/accounts'
 import { selectById } from '../models/devices'
 import { PortSetting } from './PortSetting'
 import { NameSetting } from './NameSetting'
@@ -42,7 +43,7 @@ export const Connect: React.FC = () => {
       device,
       connection: selectConnection(state, service),
       session: state.sessions.all.find(s => s.id === sessionID),
-      fetching: state.devices.fetching,
+      fetching: getDeviceModel(state).fetching,
       accordion: state.ui.accordion,
     }
   })
@@ -72,7 +73,7 @@ export const Connect: React.FC = () => {
       <GuideStep
         guide="guideAWS"
         step={5}
-        instructions="Now enable the connect on demand listener by adding the service to your network."
+        instructions="Enable the connect on demand listener by adding the service to your network. The connection will auto launch."
       >
         <Gutters className={css.gutters} top="lg">
           <ErrorButton connection={connection} onClick={() => setShowError(!showError)} visible={showError} />
@@ -82,7 +83,7 @@ export const Connect: React.FC = () => {
             permissions={device.permissions}
             size="large"
             fullWidth
-            onClick={() => ui.guide({ guide: 'guideAWS', step: 6 })}
+            onClick={() => ui.guide({ guide: 'guideAWS', step: 0, done: true })}
           />
           <ForgetButton connection={connection} inline />
         </Gutters>

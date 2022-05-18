@@ -1,5 +1,5 @@
 import React from 'react'
-import { PERSONAL_PLAN_ID } from '../models/licensing'
+import { PERSONAL_PLAN_ID } from '../models/plans'
 import {
   makeStyles,
   Divider,
@@ -27,7 +27,7 @@ type Props = {
 export const PlanCheckout: React.FC<Props> = ({ plans, form, license, onChange, onCancel }) => {
   const css = useStyles()
   const dispatch = useDispatch<Dispatch>()
-  const purchasing = useSelector((state: ApplicationState) => !!state.licensing.purchasing)
+  const purchasing = useSelector((state: ApplicationState) => state.plans.purchasing === form.planId)
   const selectedPlan = plans.find(plan => plan.id === form.planId)
   const selectedPrice = selectedPlan?.prices?.find(price => price.id === form.priceId)
 
@@ -45,9 +45,11 @@ export const PlanCheckout: React.FC<Props> = ({ plans, form, license, onChange, 
     onChange({ ...form, priceId })
   }
 
+  console.log('license', license)
   const onSubmit = () => {
-    if (license?.plan?.id === form.planId) dispatch.licensing.updateSubscription(form)
-    else dispatch.licensing.subscribe(form)
+    console.log('submit license', license)
+    if (license?.subscription) dispatch.plans.updateSubscription(form)
+    else dispatch.plans.subscribe(form)
   }
 
   const unchanged = () =>
@@ -70,7 +72,12 @@ export const PlanCheckout: React.FC<Props> = ({ plans, form, license, onChange, 
         </List>
         <List className={css.list}>
           <ListItem>
-            <Button onClick={dispatch.licensing.unsubscribe} color="primary" variant="contained" disabled={purchasing}>
+            <Button
+              onClick={() => dispatch.plans.unsubscribe(license?.plan.id)}
+              color="primary"
+              variant="contained"
+              disabled={purchasing}
+            >
               {purchasing ? 'Processing...' : 'Downgrade'}
             </Button>
             <Button onClick={onCancel} disabled={purchasing}>
@@ -108,7 +115,7 @@ export const PlanCheckout: React.FC<Props> = ({ plans, form, license, onChange, 
           </ListItemSecondaryAction>
         </ListItem>
         <ListItem button onClick={() => setQuantity(form.quantity + 1)}>
-          <Typography variant="h3">Seats</Typography>
+          <Typography variant="h3">User Licenses</Typography>
           <ListItemSecondaryAction>
             <div className={css.group}>
               <Button

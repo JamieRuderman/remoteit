@@ -3,18 +3,30 @@ import { makeStyles, ListItemText, IconButton, InputLabel, Tooltip } from '@mate
 import { spacing, fontSizes, Color } from '../styling'
 import { Icon } from '../components/Icon'
 
-type Props = {
+export type DataButtonProps = {
   title: string
   value?: string
   label?: string
   icon: string | React.ReactElement
   iconColor?: Color
+  gutterBottom?: boolean
+  fullWidth?: boolean
   showBackground?: boolean
   onClick: (event?: any) => void
 }
 
-export const DataButton: React.FC<Props> = ({ title, value, label, icon, iconColor, showBackground, onClick }) => {
-  const css = useStyles({ showBackground })
+export const DataButton: React.FC<DataButtonProps> = ({
+  title,
+  value,
+  label,
+  icon,
+  iconColor,
+  gutterBottom,
+  fullWidth,
+  showBackground,
+  onClick,
+}) => {
+  const css = useStyles({ showBackground, fullWidth, gutterBottom })
 
   return (
     <Tooltip title={title} enterDelay={500} placement="top" arrow>
@@ -30,14 +42,23 @@ export const DataButton: React.FC<Props> = ({ title, value, label, icon, iconCol
 }
 
 const useStyles = makeStyles(({ palette }) => ({
-  box: ({ showBackground }: { showBackground?: boolean }) => ({
+  box: ({
+    showBackground,
+    fullWidth,
+    gutterBottom,
+  }: {
+    showBackground?: boolean
+    fullWidth?: boolean
+    gutterBottom?: boolean
+  }) => ({
     display: 'flex',
     alignItems: 'center',
     textAlign: 'left',
     padding: spacing.sm,
     paddingLeft: spacing.xxs,
-    paddingRight: spacing.md,
-    width: '100%',
+    paddingRight: spacing.lg,
+    width: fullWidth ? '100%' : undefined,
+    marginBottom: gutterBottom ? spacing.xs : undefined,
     backgroundColor: showBackground ? palette.grayLightest.main : undefined,
     '&:hover': { backgroundColor: showBackground ? palette.primaryHighlight.main : undefined },
     '& svg': { minWidth: 60 },

@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { getDeviceModel } from '../../models/accounts'
 import { useDispatch, useSelector } from 'react-redux'
 import { Dispatch, ApplicationState } from '../../store'
 import { Typography, Button } from '@material-ui/core'
@@ -16,8 +17,8 @@ type Props = {
 
 export const DeviceTransferPage: React.FC<Props> = ({ targetDevice, device }) => {
   const { contacts = [], transferring } = useSelector((state: ApplicationState) => ({
-    contacts: state.devices.contacts,
-    transferring: state.devices.transferring,
+    contacts: state.contacts.all,
+    transferring: state.ui.transferring,
   }))
   const history = useHistory()
   const [open, setOpen] = useState<boolean>(false)
@@ -42,12 +43,7 @@ export const DeviceTransferPage: React.FC<Props> = ({ targetDevice, device }) =>
         <>
           <Typography variant="h1">Transfer Device</Typography>
           <Gutters top={null}>
-            <ContactSelector
-              contacts={contacts}
-              selected={contacts.filter(c => device.access.find(s => s.email === c.email))}
-              onChange={handleChange}
-              isTransfer={true}
-            />
+            <ContactSelector contacts={contacts} onChange={handleChange} isTransfer={true} />
           </Gutters>
         </>
       }
@@ -63,7 +59,7 @@ export const DeviceTransferPage: React.FC<Props> = ({ targetDevice, device }) =>
       </Gutters>
       <Gutters top="xl">
         <Button color="primary" onClick={() => setOpen(true)} disabled={!selected || transferring} variant="contained">
-          {transferring ? 'Transferring' : 'Transfer'}
+          {transferring ? 'Transferring...' : 'Transfer'}
         </Button>
         <Button disabled={transferring} onClick={onCancel}>
           Cancel
@@ -79,7 +75,7 @@ export const DeviceTransferPage: React.FC<Props> = ({ targetDevice, device }) =>
         title="Are you sure?"
         action="Transfer"
       >
-        <Notice severity="warning" gutterBottom fullWidth>
+        <Notice severity="danger" gutterBottom fullWidth>
           You will lose all access and control of this device upon transfer.
         </Notice>
         <Typography variant="body2">

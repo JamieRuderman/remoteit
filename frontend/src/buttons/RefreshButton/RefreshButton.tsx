@@ -1,14 +1,19 @@
 import React from 'react'
 import network from '../../services/Network'
+import { getDeviceModel } from '../../models/accounts'
 import { Dispatch, ApplicationState } from '../../store'
 import { useDispatch, useSelector } from 'react-redux'
 import { useLocation } from 'react-router-dom'
-import { IconButton } from '../IconButton'
+import { IconButton, ButtonProps } from '../IconButton'
 
-export const RefreshButton: React.FC<{ device?: IDevice }> = ({ device }) => {
-  const { fetching } = useSelector((state: ApplicationState) => ({
-    fetching: state.devices.fetching || (device && state.logs.fetching),
-  }))
+type Props = ButtonProps & {
+  device?: IDevice
+}
+
+export const RefreshButton: React.FC<Props> = ({ device, ...props }) => {
+  const fetching = useSelector(
+    (state: ApplicationState) => getDeviceModel(state).fetching || (device && state.logs.fetching) || state.ui.fetching
+  )
   const { devices, ui, logs } = useDispatch<Dispatch>()
   const location = useLocation()
   const logPage = location.pathname.includes('/logs')
@@ -18,7 +23,10 @@ export const RefreshButton: React.FC<{ device?: IDevice }> = ({ device }) => {
   const onClick = async () => {
     if (device) {
       devices.fetchSingle({ id: device.id })
-      if (logPage) logs.fetch()
+      if (logPage) {
+        logs.set({ from: 0, maxDate: new Date() })
+        logs.fetch()
+      }
     } else {
       ui.refreshAll()
       network.connect()
@@ -26,15 +34,6 @@ export const RefreshButton: React.FC<{ device?: IDevice }> = ({ device }) => {
   }
 
   return (
-    <IconButton
-      onClick={onClick}
-      disabled={fetching}
-      title={title}
-      icon="sync"
-      size="sm"
-      type="regular"
-      spin={fetching}
-      fixedWidth
-    />
+    <IconButton onClick={onClick} disabled={fetching} title={title} icon="sync" spin={fetching} fixedWidth {...props} />
   )
 }

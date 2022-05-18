@@ -1,10 +1,11 @@
 import React, { useState, useRef } from 'react'
 import { Dispatch } from '../store'
 import { useDispatch } from 'react-redux'
-import { useMediaQuery, makeStyles, Checkbox, ListSubheader, ListItemIcon, LinearProgress } from '@material-ui/core'
+import { useMediaQuery, makeStyles, ListSubheader, ListItemIcon, LinearProgress } from '@material-ui/core'
+import { DeviceListHeaderCheckbox } from './DeviceListHeaderCheckbox'
 import { DeviceListHeaderTitle } from './DeviceListHeaderTitle'
-import { Attribute } from '../helpers/attributes'
-import { Icon } from './Icon'
+import { Attribute } from './Attributes'
+import { spacing } from '../styling'
 
 const MIN_WIDTH = 50
 
@@ -12,14 +13,22 @@ type Props = {
   primary: Attribute
   attributes?: Attribute[]
   columnWidths: ILookup<number>
+  devices: IDevice[]
   select?: boolean
   fetching?: boolean
 }
 
-export const DeviceListHeader: React.FC<Props> = ({ primary, attributes = [], columnWidths, select, fetching }) => {
+export const DeviceListHeader: React.FC<Props> = ({
+  primary,
+  attributes = [],
+  columnWidths,
+  devices,
+  select,
+  fetching,
+}) => {
+  const { ui } = useDispatch<Dispatch>()
   const largeScreen = useMediaQuery('(min-width:600px)')
   const [resize, setResize] = useState<number>(0)
-  const { ui } = useDispatch<Dispatch>()
   const containerRef = useRef<HTMLLIElement>(null)
   const moveRef = useRef<[string, number, number, number, number]>(['', 0, 0, 0, 0])
   const css = useStyles()
@@ -37,10 +46,10 @@ export const DeviceListHeader: React.FC<Props> = ({ primary, attributes = [], co
     event.preventDefault()
     window.removeEventListener('mousemove', onMove)
     window.removeEventListener('mouseup', onUp)
-    ui.resizeColumn({
-      id: moveRef.current[0],
-      width: Math.max(moveRef.current[1] + (event.clientX - moveRef.current[2]), MIN_WIDTH),
-    })
+    const px = Math.max(moveRef.current[1] + (event.clientX - moveRef.current[2]), MIN_WIDTH)
+    // const containerPx = containerRef.current?.parentElement?.getBoundingClientRect().width || 1000
+    // const percentage = Math.round((px / containerPx) * 10000) / 100
+    ui.resizeColumn({ id: moveRef.current[0], width: px })
     setResize(0)
   }
 
@@ -57,20 +66,7 @@ export const DeviceListHeader: React.FC<Props> = ({ primary, attributes = [], co
       />
       <DeviceListHeaderTitle attribute={primary} onMouseDown={onDown} sticky>
         <ListItemIcon>
-          {select && (
-            <Checkbox
-              // checked={checked}
-              // indeterminate={indeterminate}
-              // inputRef={inputRef}
-              // onChange={event => onClick(event.target.checked)}
-              className={css.checkbox}
-              onClick={event => event.stopPropagation()}
-              checkedIcon={<Icon name="check-square" size="md" type="solid" />}
-              indeterminateIcon={<Icon name="minus-square" size="md" type="solid" />}
-              icon={<Icon name="square" size="md" />}
-              color="primary"
-            />
-          )}
+          <DeviceListHeaderCheckbox select={select} devices={devices} />
         </ListItemIcon>
       </DeviceListHeaderTitle>
       {largeScreen &&
@@ -84,7 +80,7 @@ export const DeviceListHeader: React.FC<Props> = ({ primary, attributes = [], co
 
 const useStyles = makeStyles(({ palette }) => ({
   header: {
-    borderBottom: `1px solid ${palette.grayLighter.main}`,
+    boxShadow: `inset 0 -1px ${palette.grayLighter.main}`,
   },
   fetching: {
     position: 'absolute',

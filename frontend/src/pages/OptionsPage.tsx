@@ -40,13 +40,13 @@ export const OptionsPage: React.FC = () => {
   return (
     <Container
       gutterBottom
+      bodyProps={{ gutterTop: true }}
       header={
         <Typography variant="h1">
-          <Title>Settings</Title>
+          <Title>Application</Title>
         </Typography>
       }
     >
-      <Typography variant="subtitle1">General</Typography>
       <List>
         <ListItemSelect
           label="Theme"
@@ -102,12 +102,14 @@ export const OptionsPage: React.FC = () => {
         />
         {(os === 'mac' || os === 'windows') && (
           <>
-            <ListItemSetting
-              label="Auto update"
-              icon="chevron-double-up"
-              toggle={!!preferences.autoUpdate}
-              onClick={() => emit('preferences', { ...preferences, autoUpdate: !preferences.autoUpdate })}
-            />
+            <DesktopUI>
+              <ListItemSetting
+                label="Auto update"
+                icon="chevron-double-up"
+                toggle={!!preferences.autoUpdate}
+                onClick={() => emit('preferences', { ...preferences, autoUpdate: !preferences.autoUpdate })}
+              />
+            </DesktopUI>
             <TestUI>
               <ListItemSetting
                 quote

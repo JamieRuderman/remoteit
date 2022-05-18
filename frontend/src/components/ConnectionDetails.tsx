@@ -1,14 +1,11 @@
 import React, { useRef, useState, useEffect } from 'react'
 import useResizeObserver from 'use-resize-observer'
 import { makeStyles, Typography, InputLabel, Collapse, Paper } from '@material-ui/core'
-import { useDispatch } from 'react-redux'
-import { Dispatch } from '../store'
-import { getAttributes } from '../helpers/attributes'
+import { getAttributes } from './Attributes'
 import { useApplication } from '../hooks/useApplication'
 import { LaunchButton } from '../buttons/LaunchButton'
 import { DataDisplay } from './DataDisplay'
 import { CopyButton } from '../buttons/CopyButton'
-import { GuideStep } from './GuideStep'
 import { Gutters } from './Gutters'
 import { spacing } from '../styling'
 
@@ -27,7 +24,6 @@ export const ConnectionDetails: React.FC<Props> = ({ showTitle, show, connection
   const launchRef = useRef<HTMLDivElement>(null)
   const [hover, setHover] = useState<'name' | 'port' | 'copy' | 'launch' | undefined>()
   const [displayHeight, setDisplayHeight] = useState<number>(33)
-  const { ui } = useDispatch<Dispatch>()
   const app = useApplication(service, connection)
   const css = useStyles()
 
@@ -45,7 +41,8 @@ export const ConnectionDetails: React.FC<Props> = ({ showTitle, show, connection
   const { ref } = useResizeObserver<HTMLDivElement>({ onResize: measure })
 
   useEffect(() => {
-    setTimeout(measure, 100)
+    const timeout = setTimeout(measure, 100)
+    return () => clearTimeout(timeout)
   }, [connection, service])
 
   if (!connection && !session) return null
@@ -53,7 +50,7 @@ export const ConnectionDetails: React.FC<Props> = ({ showTitle, show, connection
   let name = connection?.host
   let port = connection?.port
 
-  if (port === -1 || !name) {
+  if ((port === -1 || !name) && !connection?.enabled) {
     name = 'Starting...'
     port = undefined
   }
@@ -150,24 +147,15 @@ export const ConnectionDetails: React.FC<Props> = ({ showTitle, show, connection
               <Gutters size="md" top="sm" bottom="xs" className={css.buttons}>
                 <span>
                   <InputLabel shrink>Copy</InputLabel>
-                  <GuideStep
-                    guide="guideAWS"
-                    step={6}
-                    instructions="Copy this address for use in your application. It will connect on demand even if you close remoteit."
-                    placement="left"
-                    component="span"
-                  >
-                    <CopyButton
-                      color="alwaysWhite"
-                      icon="copy"
-                      type="regular"
-                      size="lg"
-                      value={name + (port ? p + port : '')}
-                      onCopy={() => ui.guide({ guide: 'guideAWS', step: 7 })}
-                      onMouseEnter={() => setHover('copy')}
-                      onMouseLeave={() => setHover(undefined)}
-                    />
-                  </GuideStep>
+                  <CopyButton
+                    color="alwaysWhite"
+                    icon="copy"
+                    type="regular"
+                    size="lg"
+                    value={name + (port ? p + port : '')}
+                    onMouseEnter={() => setHover('copy')}
+                    onMouseLeave={() => setHover(undefined)}
+                  />
                   {connection?.host && (
                     <>
                       {connection.port && (
@@ -194,7 +182,7 @@ export const ConnectionDetails: React.FC<Props> = ({ showTitle, show, connection
                       )}
                       <CopyButton
                         color="alwaysWhite"
-                        icon="link"
+                        icon={app.launchType === 'URL' ? 'link' : 'terminal'}
                         size="md"
                         app={app}
                         value={app.string}
@@ -204,25 +192,19 @@ export const ConnectionDetails: React.FC<Props> = ({ showTitle, show, connection
                     </>
                   )}
                 </span>
-                <span>
-                  <InputLabel shrink>Launch</InputLabel>
-                  <GuideStep
-                    guide="guideAWS"
-                    step={7}
-                    instructions="Or for web and some other services you can use the launch button."
-                    placement="left"
-                  >
+                {app.canLaunch && (
+                  <span>
+                    <InputLabel shrink>Launch</InputLabel>
                     <LaunchButton
                       color="alwaysWhite"
                       type="solid"
                       size="md"
                       app={app}
-                      onLaunch={() => ui.guide({ guide: 'guideAWS', step: 0, done: true })}
                       onMouseEnter={() => setHover('launch')}
                       onMouseLeave={() => setHover(undefined)}
                     />
-                  </GuideStep>
-                </span>
+                  </span>
+                )}
               </Gutters>
             </>
           )}

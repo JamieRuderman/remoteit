@@ -8,12 +8,15 @@ import backend from './backend'
 import billing from './billing'
 import binaries from './binaries'
 import connections from './connections'
+import contacts from './contacts'
 import devices from './devices'
 import feedback from './feedback'
+import keys from './keys'
 import labels from './labels'
-import licensing from './licensing'
 import logs from './logs'
+import mfa from './mfa'
 import organization from './organization'
+import plans from './plans'
 import search from './search'
 import sessions from './sessions'
 import shares from './shares'
@@ -30,12 +33,15 @@ export interface RootModel extends Models<RootModel> {
   billing: typeof billing
   binaries: typeof binaries
   connections: typeof connections
+  contacts: typeof contacts
   devices: typeof devices
   feedback: typeof feedback
+  keys: typeof keys
   labels: typeof labels
-  licensing: typeof licensing
   logs: typeof logs
+  mfa: typeof mfa
   organization: typeof organization
+  plans: typeof plans
   search: typeof search
   sessions: typeof sessions
   shares: typeof shares
@@ -53,12 +59,15 @@ export const models: RootModel = {
   billing,
   binaries,
   connections,
+  contacts,
   devices,
   feedback,
+  keys,
   labels,
-  licensing,
   logs,
+  mfa,
   organization,
+  plans,
   search,
   sessions,
   shares,

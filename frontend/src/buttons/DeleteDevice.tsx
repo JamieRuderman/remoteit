@@ -16,7 +16,7 @@ export const DeleteDevice: React.FC<Props> = ({ device, menuItem, onClick }) => 
   const { devices, ui } = useDispatch<Dispatch>()
   const { destroying, userId, setupBusy, setupDeletingDevice } = useSelector((state: ApplicationState) => ({
     userId: state.auth.user?.id,
-    destroying: state.devices.destroying,
+    destroying: state.ui.destroying,
     setupBusy: state.ui.setupBusy,
     setupDeletingDevice: state.ui.setupDeletingDevice,
   }))

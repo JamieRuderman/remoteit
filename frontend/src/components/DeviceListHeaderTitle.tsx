@@ -1,6 +1,6 @@
 import React from 'react'
 import { makeStyles, Box } from '@material-ui/core'
-import { Attribute } from '../helpers/attributes'
+import { Attribute } from './Attributes'
 import { spacing } from '../styling'
 
 type Props = {
@@ -31,12 +31,15 @@ const useStyles = makeStyles(({ palette }) => ({
     left: 0,
     zIndex: 4,
     position: 'sticky',
-    background: palette.white.main,
     paddingLeft: spacing.md,
+    backgroundImage: `linear-gradient(90deg, ${palette.white.main} 95%, transparent)`,
+    borderBottom: `1px solid ${palette.grayLighter.main}`,
   },
   title: {
     paddingLeft: spacing.xxs,
     paddingRight: spacing.sm,
+    backgroundColor: palette.white.main,
+    borderBottom: `1px solid ${palette.grayLighter.main}`,
     position: 'relative',
     overflow: 'visible',
   },

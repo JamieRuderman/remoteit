@@ -5,10 +5,13 @@ import { Icon, IconProps } from '../components/Icon/Icon'
 import { spacing } from '../styling'
 import classnames from 'classnames'
 
-export type ButtonProps = IconProps & {
-  title?: string
-  icon: string
+export type ButtonProps = Omit<IconProps, 'title'> & {
+  title?: string | React.ReactElement
+  forceTitle?: boolean
+  icon?: string
+  name?: string
   disabled?: boolean
+  hideDisableFade?: boolean
   to?: string
   variant?: 'text' | 'contained'
   className?: string
@@ -24,8 +27,11 @@ export type ButtonProps = IconProps & {
 
 export const IconButton: React.FC<ButtonProps> = ({
   title,
+  forceTitle,
   icon,
+  name,
   disabled,
+  hideDisableFade,
   to,
   color,
   variant,
@@ -45,6 +51,7 @@ export const IconButton: React.FC<ButtonProps> = ({
   const history = useHistory()
   const css = useStyles({ color })
   const contained = variant === 'contained'
+  icon = icon || name
   if (loading) {
     icon = 'spinner-third'
     props.spin = true
@@ -63,7 +70,7 @@ export const IconButton: React.FC<ButtonProps> = ({
       className={classnames(className, contained && css.contained)}
       type={submit ? 'submit' : undefined}
       style={{
-        opacity: disabled ? 0.5 : undefined,
+        opacity: disabled && !hideDisableFade ? 0.5 : undefined,
         marginBottom: shiftDown ? -spacing.sm : undefined,
         marginLeft: inline ? spacing.sm : undefined,
       }}
@@ -72,7 +79,7 @@ export const IconButton: React.FC<ButtonProps> = ({
     </MuiIconButton>
   )
 
-  return disabled || !title ? (
+  return !(forceTitle && title) && (disabled || !title) ? (
     button
   ) : (
     <Tooltip title={title}>

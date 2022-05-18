@@ -3,21 +3,33 @@ import { fontSizes, spacing, Color, FontSize } from '../../styling'
 import { fal, IconName, IconPrefix } from '@fortawesome/pro-light-svg-icons'
 import { makeStyles, Badge } from '@material-ui/core'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { ColorIcon } from '../ColorIcon'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { fab } from '@fortawesome/free-brands-svg-icons'
 import { far } from '@fortawesome/pro-regular-svg-icons'
 import { fas } from '@fortawesome/pro-solid-svg-icons'
-import { Advantech } from '../../assets/Advantech'
-import { OpenWrt } from '../../assets/OpenWrt'
-import { Nvidia } from '../../assets/Nvidia'
-import { Axis } from '../../assets/Axis'
 import { R3 } from '../../assets/R3'
 import classnames from 'classnames'
+
+const COLOR_ICONS = [
+  'raspberry-pi',
+  'windows',
+  'aws',
+  'openwrt',
+  'ubuntu',
+  'nvidia',
+  'linux',
+  'hdd',
+  'advantech',
+  'axis',
+  'nas',
+]
 
 library.add(fal, fab, far, fas)
 export interface IconProps {
   name?: string
   color?: Color | string
+  fullColor?: boolean
   className?: string
   title?: string
   fixedWidth?: boolean
@@ -36,7 +48,21 @@ export type Ref = HTMLSpanElement
 
 export const Icon = React.forwardRef<HTMLSpanElement, IconProps>(
   (
-    { color, fixedWidth, name, size, fontSize, rotate, spin, type = 'regular', inline, inlineLeft, modified, ...props },
+    {
+      color,
+      fullColor,
+      fixedWidth,
+      name,
+      size = 'base',
+      fontSize,
+      rotate,
+      spin,
+      type = 'regular',
+      inline,
+      inlineLeft,
+      modified,
+      ...props
+    },
     ref
   ) => {
     if (name === 'port') {
@@ -51,12 +77,11 @@ export const Icon = React.forwardRef<HTMLSpanElement, IconProps>(
     const css = useStyles({ color, inline, inlineLeft, size, rotate, fontSize })
     if (!name) return null
 
+    // Custom color icons
+    if (fullColor && COLOR_ICONS.includes(name)) return <ColorIcon name={name} className={css.icon} {...props} />
+
     // Special Icon Handling
     if (name === 'r3') return <R3 className={css.icon} {...props} />
-    if (name === 'nvidia') return <Nvidia className={css.icon} {...props} />
-    if (name === 'openwrt') return <OpenWrt className={css.icon} {...props} />
-    if (name === 'advantech') return <Advantech className={css.icon} {...props} />
-    if (name === 'axis') return <Axis className={css.icon} {...props} />
 
     let fontType: IconPrefix = 'far'
 

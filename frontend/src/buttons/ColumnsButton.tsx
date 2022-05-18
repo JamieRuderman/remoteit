@@ -8,13 +8,13 @@ import { Icon } from '../components/Icon'
 export const ColumnsButton: React.FC = () => {
   const { open, changed } = useSelector((state: ApplicationState) => ({
     open: state.ui.drawerMenu === 'COLUMNS',
-    changed: state.ui.columns.length > defaultState.columns.length,
+    changed: state.ui.columns.length !== defaultState.columns.length,
   }))
   const { ui } = useDispatch<Dispatch>()
   const css = useStyles({ open })
   const icon = open ? 'times' : 'line-columns'
   return (
-    <Tooltip title="Columns" className={css.button}>
+    <Tooltip title={open ? 'Hide Columns' : 'Show Columns'} className={css.button}>
       <IconButton onClick={() => ui.setPersistent({ drawerMenu: open ? null : 'COLUMNS' })}>
         {changed ? (
           <Badge variant="dot" color="primary">

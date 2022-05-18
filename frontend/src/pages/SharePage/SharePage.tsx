@@ -15,15 +15,9 @@ import analyticsHelper from '../../helpers/analyticsHelper'
 export const SharePage: React.FC<{ device?: IDevice }> = ({ device }) => {
   const { email = '', serviceID = '' } = useParams<{ email: string; serviceID: string }>()
   const { shares } = useDispatch<Dispatch>()
-  const {
-    contacts = [],
-    user,
-    userSelected,
-    deleting,
-  } = useSelector((state: ApplicationState) => ({
-    contacts: state.devices.contacts,
-    user: state.devices.contacts.find(c => c.email === email),
-    userSelected: state.shares.currentDevice?.userSelected,
+  const { contacts, user, deleting } = useSelector((state: ApplicationState) => ({
+    contacts: state.contacts.all || [],
+    user: state.contacts.all.find(c => c.email === email),
     deleting: state.shares.deleting,
   }))
   const location = useLocation()
@@ -65,19 +59,13 @@ export const SharePage: React.FC<{ device?: IDevice }> = ({ device }) => {
                 )}
               </>
             ) : (
-              device && (
-                <ContactSelector
-                  contacts={contacts}
-                  selected={contacts.filter(c => device.access.find(s => s.email === c.email))}
-                  onChange={handleChange}
-                />
-              )
+              device && <ContactSelector contacts={contacts} onChange={handleChange} />
             )}
           </Typography>
         </>
       }
     >
-      {device && <SharingForm device={device} user={email === '' ? userSelected : user} />}
+      {device && <SharingForm device={device} user={user} />}
     </Container>
   )
 }

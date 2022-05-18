@@ -1,10 +1,11 @@
 import React from 'react'
 import { useHistory } from 'react-router-dom'
 import { useSelector } from 'react-redux'
+import { getDeviceModel } from '../../models/accounts'
 import { ApplicationState } from '../../store'
 import { makeStyles, ListItem, ListItemText, ListItemSecondaryAction, Link, Chip, Typography } from '@material-ui/core'
 import { ListItemLocation } from '../ListItemLocation'
-import { getOwnDevices } from '../../models/accounts'
+import { getAllDevices } from '../../models/accounts'
 import { attributeName } from '../../shared/nameHelper'
 import { DesktopUI } from '../../components/DesktopUI'
 import { Notice } from '../../components/Notice'
@@ -13,15 +14,15 @@ import { osName } from '../../shared/nameHelper'
 export const DeviceSetupItem: React.FC<{ restore?: boolean }> = ({ restore }) => {
   const css = useStyles()
   const history = useHistory()
-  const { thisDevice, targetDevice, os, canRestore, restoring } = useSelector((state: ApplicationState) => ({
-    thisDevice: getOwnDevices(state).find(d => d.thisDevice),
+  const { ownDevice, targetDevice, os, canRestore, restoring } = useSelector((state: ApplicationState) => ({
+    ownDevice: getAllDevices(state).find(d => d.thisDevice && d.owner.id === state.auth.user?.id),
     targetDevice: state.backend.device,
     os: state.backend.environment.os,
     restoring: state.ui.restoring,
     canRestore:
       !state.backend.device.uid &&
-      (state.devices.total > state.devices.size ||
-        !!getOwnDevices(state).find((d: IDevice) => d.state !== 'active' && !d.shared)),
+      (getDeviceModel(state).total > getDeviceModel(state).size ||
+        !!getAllDevices(state).find((d: IDevice) => d.state !== 'active' && !d.shared)),
   }))
 
   if (restoring)
@@ -33,11 +34,11 @@ export const DeviceSetupItem: React.FC<{ restore?: boolean }> = ({ restore }) =>
 
   const registered = !!targetDevice.uid
   let title = 'Set up this device'
-  let subtitle = `Add remote access to this ${osName(os)} or any service on the network.`
+  let subtitle = `Add remote access to this ${osName(os)} or any service on the local network.`
 
   if (registered) {
-    if (thisDevice) {
-      title = attributeName(thisDevice) || targetDevice.name || ''
+    if (ownDevice) {
+      title = attributeName(ownDevice) || targetDevice.name || ''
       subtitle = `Configure this system.`
     } else {
       return <Notice>This system is not registered to you.</Notice>
@@ -46,7 +47,7 @@ export const DeviceSetupItem: React.FC<{ restore?: boolean }> = ({ restore }) =>
 
   return (
     <DesktopUI>
-      <ListItemLocation icon="hdd" pathname="/devices/setup" className={canRestore ? css.margin : undefined} dense>
+      <ListItemLocation icon="laptop" pathname="/devices/setup" className={canRestore ? css.margin : undefined} dense>
         <ListItemText primary={title} secondary={subtitle} />
         {canRestore && (
           <ListItemSecondaryAction>

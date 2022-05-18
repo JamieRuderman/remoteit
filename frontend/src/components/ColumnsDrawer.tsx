@@ -2,17 +2,18 @@ import React from 'react'
 import { ApplicationState, Dispatch } from '../store'
 import { useSelector, useDispatch } from 'react-redux'
 import { makeStyles, ListSubheader, List, ListItemText, ListItem, ListItemIcon, Button } from '@material-ui/core'
-import { masterAttributes, deviceAttributes } from '../helpers/attributes'
+import { masterAttributes, deviceAttributes } from './Attributes'
+import { selectLimitsLookup } from '../models/organization'
 import { defaultState } from '../models/ui'
 import { spacing } from '../styling'
 import { Drawer } from './Drawer'
 import { Icon } from './Icon'
 
 export const ColumnsDrawer: React.FC = () => {
-  const { open, columnWidths, selected } = useSelector((state: ApplicationState) => ({
+  const { open, selected, feature } = useSelector((state: ApplicationState) => ({
     open: state.ui.drawerMenu === 'COLUMNS',
-    columnWidths: state.ui.columnWidths,
     selected: state.ui.columns,
+    feature: selectLimitsLookup(state),
   }))
   const { ui } = useDispatch<Dispatch>()
   const css = useStyles()
@@ -23,13 +24,14 @@ export const ColumnsDrawer: React.FC = () => {
     ui.setPersistent({ columns: [...selected] })
   }
 
-  const attributes = masterAttributes.concat(deviceAttributes).filter(a => a.column)
-  const onReset = () => {
-    const deviceName = attributes.find(a => a.id === 'deviceName')?.defaultWidth
-    const services = attributes.find(a => a.id === 'services')?.defaultWidth
-    ui.setPersistent({ columns: [...defaultState.columns], columnWidths: { ...columnWidths, deviceName, services } })
-    ui.set({ drawerMenu: null })
-  }
+  const attributes = masterAttributes.concat(deviceAttributes).filter(a => a.column && a.show(feature))
+
+  const onReset = () =>
+    ui.setPersistent({
+      columns: [...defaultState.columns],
+      columnWidths: { ...defaultState.columnWidths },
+      drawerMenu: null,
+    })
 
   return (
     <Drawer open={open}>
@@ -44,9 +46,9 @@ export const ColumnsDrawer: React.FC = () => {
           const checked = selected.indexOf(data.id)
           return (
             <ListItem
+              dense
               button
               disabled={data.required}
-              dense
               key={data.id}
               onClick={() => (checked >= 0 ? remove(checked) : add(data.id))}
             >

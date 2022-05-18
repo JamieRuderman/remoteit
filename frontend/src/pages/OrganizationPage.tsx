@@ -1,93 +1,91 @@
 import React, { useEffect } from 'react'
-import { Dispatch, ApplicationState } from '../store'
-import { Typography, List } from '@material-ui/core'
-import { useSelector, useDispatch } from 'react-redux'
-import { selectOwner } from '../models/organization'
-import { getRemoteitLicense } from '../models/licensing'
-import { InlineTextFieldSetting } from '../components/InlineTextFieldSetting'
-import { OrganizationMemberList } from '../components/OrganizationMemberList'
-import { LicensingNoticeDisplay } from '../components/LicensingNoticeDisplay'
-import { LoadingMessage } from '../components/LoadingMessage'
-import { DeleteButton } from '../buttons/DeleteButton'
-import { SeatsSetting } from '../components/SeatsSetting'
-import { IconButton } from '../buttons/IconButton'
+import { Redirect } from 'react-router-dom'
+import { useSelector } from 'react-redux'
+import { ApplicationState } from '../store'
+import { ListItemLocation } from '../components/ListItemLocation'
+import { List, Typography, ListSubheader } from '@material-ui/core'
+import { selectPermissions, getOrganization } from '../models/organization'
+import { selectRemoteitLicense } from '../models/plans'
+import { selectLimitsLookup } from '../models/organization'
+import { PaywallUI } from '../components/PaywallUI'
 import { Container } from '../components/Container'
 import { Gutters } from '../components/Gutters'
+import { Notice } from '../components/Notice'
 import { Title } from '../components/Title'
 import analyticsHelper from '../helpers/analyticsHelper'
 
 export const OrganizationPage: React.FC = () => {
-  const { organization, license, owner } = useSelector((state: ApplicationState) => ({
-    organization: state.organization,
-    license: getRemoteitLicense(state),
-    owner: selectOwner(state),
+  const { initialized, permissions, limits, organization, license } = useSelector((state: ApplicationState) => ({
+    organization: getOrganization(state),
+    initialized: state.organization.initialized,
+    permissions: selectPermissions(state),
+    limits: selectLimitsLookup(state),
+    license: selectRemoteitLicense(state),
   }))
-  const [removing, setRemoving] = React.useState<boolean>(false)
-  const dispatch = useDispatch<Dispatch>()
-  const enterprise = !license?.plan?.billing
 
   useEffect(() => {
     analyticsHelper.page('OrganizationPage')
   }, [])
 
+  if (initialized && !organization.id) return <Redirect to={'/organization/empty'} />
+
+  const admin = !!permissions?.includes('ADMIN')
+
   return (
     <Container
       gutterBottom
       header={
-        <>
-          <Typography variant="h1">
-            <Title>Organization</Title>
-            {organization.id && (
-              <>
-                <DeleteButton
-                  title="Delete Organization"
-                  destroying={removing}
-                  warning={
-                    <>
-                      You will be permanently deleting <i>{organization.name}. </i>
-                      This will remove all your members and their access to your devices.
-                    </>
-                  }
-                  onDelete={() => {
-                    setRemoving(true)
-                    dispatch.organization.removeOrganization()
-                  }}
-                />
-                <IconButton title="Add member" icon="user-plus" to="/settings/organization/share" size="md" />
-              </>
-            )}
+        <Gutters top="sm">
+          {license && <ListSubheader disableGutters>{license?.plan.description} Plan</ListSubheader>}
+          <Typography variant="h2" gutterBottom>
+            <Title>{organization.name || '...'}</Title>
           </Typography>
-          {organization.id && (
-            <List>
-              <InlineTextFieldSetting
-                hideIcon
-                value={organization.name}
-                label="Name"
-                resetValue={organization.name}
-                onSave={name => dispatch.organization.setOrganization(name.toString())}
-              />
-              <SeatsSetting license={license} />
-              <Gutters>
-                <Typography variant="body2" color="textSecondary">
-                  Add members to your organization to automatically share all of your devices. &nbsp;
-                  {!enterprise && (
-                    <b>
-                      Unlicensed members will only be able to connect to the first five and can not be device admins.
-                    </b>
-                  )}
-                </Typography>
-              </Gutters>
-              <LicensingNoticeDisplay noticeType="PERSONAL_ORGANIZATION" license={license} />
-            </List>
-          )}
-        </>
+        </Gutters>
       }
     >
-      {!organization.initialized ? (
-        <LoadingMessage />
-      ) : (
-        <OrganizationMemberList organization={organization} owner={owner} enterprise={enterprise} />
+      {!admin && (
+        <Notice severity="info" gutterTop>
+          You need admin privileges to change this organization.
+        </Notice>
       )}
+      <List>
+        <ListItemLocation
+          title="Members"
+          pathname="/organization/members"
+          icon="users"
+          match={['/organization', '/organization/members']}
+          disabled={!admin}
+          exactMatch
+          showDisabled
+          dense
+        />
+        <ListItemLocation
+          title="Tags"
+          pathname="/organization/tags"
+          icon="tag"
+          disabled={!limits.tagging || !admin}
+          showDisabled
+          dense
+        />
+        <ListItemLocation
+          title="Settings"
+          icon="sliders-h"
+          pathname="/organization/saml"
+          disabled={!admin}
+          showDisabled
+          dense
+        />
+        <PaywallUI limitName="roles" title="Roles are available for Business and Enterprise plans">
+          <ListItemLocation
+            title="Roles"
+            icon="user-shield"
+            pathname={`/organization/roles/${organization?.roles.find(r => !r.disabled)?.id}`}
+            disabled={!limits.roles || !admin}
+            showDisabled
+            dense
+          />
+        </PaywallUI>
+      </List>
     </Container>
   )
 }

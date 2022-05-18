@@ -2,11 +2,12 @@ import React from 'react'
 import Controller from '../../services/Controller'
 import { useSelector, useDispatch } from 'react-redux'
 import { ApplicationState, Dispatch } from '../../store'
-import { Snackbar, IconButton } from '@material-ui/core'
+import { Snackbar, IconButton, Dialog } from '@material-ui/core'
 import { getOwnDevices } from '../../models/accounts'
 import { DragAppRegion } from '../../components/DragAppRegion'
 import { UpdateNotice } from '../../components/UpdateNotice'
 import { RemoteHeader } from '../../components/RemoteHeader'
+import { Notice } from '../../components/Notice'
 import { Icon } from '../../components/Icon'
 
 export interface Props {
@@ -40,23 +41,17 @@ export function Page({ children }: Props & React.HTMLProps<HTMLDivElement>) {
   if (noticeMessage) snackbar = 'notice'
   if (successMessage) snackbar = 'success'
   if (errorMessage) snackbar = 'error'
-  if (offline) snackbar = 'offline'
   if (backendAuthenticated && !connected) snackbar = 'retry'
 
   return (
     <RemoteHeader device={device} color={label?.id ? label.color : undefined}>
       {children}
       <DragAppRegion />
-      <Snackbar
-        open={snackbar === 'offline'}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-        message={
-          <>
-            <Icon name="exclamation-triangle" size="md" color="warning" type="regular" fixedWidth inlineLeft />
-            Network offline.
-          </>
-        }
-      />
+      <Dialog open={offline} maxWidth="xs" fullWidth>
+        <Notice severity="warning" fullWidth>
+          Network Offline
+        </Notice>
+      </Dialog>
       <Snackbar
         open={snackbar === 'retry'}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
@@ -87,7 +82,12 @@ export function Page({ children }: Props & React.HTMLProps<HTMLDivElement>) {
       <Snackbar
         key={noticeMessage || 'notice'}
         open={snackbar === 'notice'}
-        message={noticeMessage}
+        message={
+          <>
+            <Icon name="info-circle" size="md" color="primary" type="regular" fixedWidth inlineLeft />
+            {noticeMessage}
+          </>
+        }
         onClose={() => ui.set({ noticeMessage: '' })}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
         autoHideDuration={20000}
@@ -96,6 +96,7 @@ export function Page({ children }: Props & React.HTMLProps<HTMLDivElement>) {
         key={successMessage || 'success'}
         open={snackbar === 'success'}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        autoHideDuration={20000}
         message={
           <>
             <Icon name="check" size="md" color="success" type="regular" fixedWidth inlineLeft />

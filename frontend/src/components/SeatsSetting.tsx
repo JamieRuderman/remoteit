@@ -1,10 +1,11 @@
-import React from 'react'
-import { PERSONAL_PLAN_ID, REMOTEIT_PRODUCT_ID } from '../models/licensing'
+import React, { useState, useRef, useEffect } from 'react'
+import { PERSONAL_PLAN_ID, REMOTEIT_PRODUCT_ID } from '../models/plans'
 import { makeStyles, List, TextField, Button } from '@material-ui/core'
 import { ApplicationState, Dispatch } from '../store'
 import { spacing, fontSizes } from '../styling'
 import { useSelector, useDispatch } from 'react-redux'
 import { currencyFormatter } from '../helpers/utilHelper'
+import { getActiveAccountId } from '../models/accounts'
 import { InlineSetting } from './InlineSetting'
 import { Confirm } from './Confirm'
 import { Icon } from './Icon'
@@ -12,23 +13,29 @@ import { Icon } from './Icon'
 export const SeatsSetting: React.FC<{ license: ILicense | null }> = ({ license }) => {
   const css = useStyles()
   const dispatch = useDispatch<Dispatch>()
-  const fieldRef = React.useRef<HTMLInputElement>(null)
-  const { plans, purchasing } = useSelector((state: ApplicationState) => ({
-    plans: state.licensing.plans.filter(p => p.product.id === REMOTEIT_PRODUCT_ID),
-    purchasing: !!state.licensing.purchasing,
+  const fieldRef = useRef<HTMLInputElement>(null)
+  const { accountId, plans, purchasing } = useSelector((state: ApplicationState) => ({
+    accountId: getActiveAccountId(state),
+    plans: state.plans.plans.filter(p => p.product.id === REMOTEIT_PRODUCT_ID),
+    purchasing: !!state.plans.purchasing,
   }))
+
+  useEffect(() => {
+    setForm(getDefaults())
+  }, [license])
 
   const getDefaults = () => {
     const plan = plans.find(plan => plan.id === license?.plan?.id) || plans[0]
     const price = plan?.prices?.find(p => p.id === license?.subscription?.price?.id) || plan?.prices?.[0]
     return {
+      accountId,
       priceId: price?.id,
       quantity: license?.quantity || 1,
     }
   }
 
-  const [form, setForm] = React.useState<IPurchase>(getDefaults())
-  const [confirm, setConfirm] = React.useState<boolean>(false)
+  const [form, setForm] = useState<IPurchase>(getDefaults())
+  const [confirm, setConfirm] = useState<boolean>(false)
   const selectedPlan = plans.find(plan => plan.id === license?.plan?.id)
   const selectedPrice = selectedPlan?.prices?.find(price => price.id === form.priceId)
   const enterprise = !license?.plan?.billing
@@ -47,6 +54,7 @@ export const SeatsSetting: React.FC<{ license: ILicense | null }> = ({ license }
         <InlineSetting
           hideIcon
           disabled={purchasing}
+          loading={purchasing}
           label="User Licenses"
           warning="This will change your billing."
           value={form.quantity}
@@ -75,14 +83,12 @@ export const SeatsSetting: React.FC<{ license: ILicense | null }> = ({ license }
               <Icon name="plus" size="sm" />
             </Button>
           </div>
-          {selectedPrice?.amount ? (
+          {selectedPrice?.amount && (
             <>
               {currencyFormatter(selectedPrice?.currency, (selectedPrice?.amount || 0) * form.quantity)}
               &nbsp;/&nbsp;
               {selectedPrice?.interval.toLowerCase()}
             </>
-          ) : (
-            <em>Free</em>
           )}
         </InlineSetting>
         {confirm && (
@@ -90,7 +96,7 @@ export const SeatsSetting: React.FC<{ license: ILicense | null }> = ({ license }
             open={confirm}
             title="Confirm Billing Change"
             onConfirm={() => {
-              dispatch.licensing.updateSubscription(form)
+              dispatch.plans.updateSubscription(form)
               setConfirm(false)
             }}
             onDeny={() => {
@@ -112,7 +118,7 @@ export const SeatsSetting: React.FC<{ license: ILicense | null }> = ({ license }
   )
 }
 
-const useStyles = makeStyles( ({ palette }) => ({
+const useStyles = makeStyles(({ palette }) => ({
   group: {
     border: `1px solid ${palette.grayLighter.main}`,
     borderRadius: spacing.md,
@@ -135,6 +141,8 @@ const useStyles = makeStyles( ({ palette }) => ({
       fontWeight: 500,
       textAlign: 'center',
       marginTop: 0,
+      marginLeft: 0,
+      paddingTop: spacing.xxs,
     },
   },
 }))

@@ -19,6 +19,7 @@ class Controller extends EventEmitter {
     this.url = protocol === 'file:' || isDev ? `http://localhost:${PORT}` : '/'
     this.onNetworkConnect()
     network.on('connect', this.onNetworkConnect)
+    network.on('disconnect', this.close)
   }
 
   log(...args) {
@@ -29,12 +30,13 @@ class Controller extends EventEmitter {
     const state = store.getState()
     const { ui, auth } = store.dispatch
 
-    this.log('ONLINE - CONNECT LOCAL SOCKET')
-
+    if (!navigator.onLine) return
     if (state.auth.backendAuthenticated) {
+      this.log('-- ONLINE AUTHORIZED RE-CONNECT')
       this.open()
       ui.refreshAll()
     } else {
+      this.log('1- ONLINE AUTHORIZE AND CONNECT')
       ui.set({ errorMessage: '' })
       auth.init()
     }
@@ -111,7 +113,7 @@ function getEventHandlers() {
 
   return {
     connect: () => {
-      controller.log('CONNECT LOCAL SOCKET')
+      controller.log('event: CONNECT LOCAL SOCKET')
       controller.auth()
       ui.set({ connected: true })
       backend.set({ error: false })
@@ -119,28 +121,37 @@ function getEventHandlers() {
 
     unauthorized: (error: Error) => auth.backendSignInError(error.message),
 
-    authenticated: auth.backendAuthenticated,
-
-    disconnect: auth.disconnect,
-
-    dataReady: auth.dataReady,
-
-    connect_error: () => {
-      backend.set({ error: true })
+    authenticated: () => {
+      controller.log('event: BACKEND AUTHENTICATED')
+      auth.backendAuthenticated()
     },
 
+    dataReady: () => {
+      controller.log('event: DATA READY')
+      auth.dataReady()
+    },
+
+    disconnect: () => {
+      controller.log('event: DISCONNECT')
+      auth.disconnect()
+    },
+
+    'signed-out': () => auth.signedOut(),
+
+    connect_error: () => backend.set({ error: true }),
+
     pool: (result: IConnection[]) => {
-      controller.log('socket pool', result)
+      controller.log('event: socket pool', result)
       connections.restoreConnections(result)
     },
 
     connection: (result: IConnection) => {
-      controller.log('socket connection', result)
+      controller.log('event: socket connection', result)
       connections.updateConnection(result)
     },
 
     targets: (result: ITarget[]) => {
-      controller.log('socket targets', result)
+      controller.log('event: socket targets', result)
       if (result) {
         backend.set({ targets: result })
         backend.targetUpdated(result)
@@ -148,17 +159,17 @@ function getEventHandlers() {
     },
 
     device: (result: ITargetDevice) => {
-      controller.log('socket device', result)
+      controller.log('event: socket device', result)
       if (result) backend.targetDeviceUpdated(result)
     },
 
     scan: (result: IScanData) => {
-      controller.log('socket scan', result)
+      controller.log('event: socket scan', result)
       if (result) backend.set({ scanData: result })
     },
 
     interfaces: (result: IInterface[]) => {
-      controller.log('socket interfaces', result)
+      controller.log('event: socket interfaces', result)
       if (result) {
         backend.set({ interfaces: result })
         analyticsHelper.setOobActive(result.length > 1)
@@ -184,9 +195,6 @@ function getEventHandlers() {
 
     filePath: (filePath: string) => backend.set({ filePath }),
 
-    // User
-    'signed-out': () => auth.signedOut(),
-
     // AutoUpdate
     'update/downloaded': (version: string) => {
       backend.set({ updateReady: version })
@@ -211,7 +219,7 @@ function getEventHandlers() {
     },
 
     'binary/install/error': (error: string) => binaries.installError(error),
-    'binary/install/progress': (progress: number) => controller.log('binary/install/progress', progress),
+    'binary/install/progress': (progress: number) => controller.log('event: binary/install/progress', progress),
     'binary/installed': (info: InstallationInfo) => binaries.installed(info),
     'binary/not-installed': (binary: BinaryName) => binaries.notInstalled(binary),
   } as EventHandlers

@@ -3,12 +3,13 @@ import analyticsHelper from '../helpers/analyticsHelper'
 import { makeStyles, ButtonBase, Divider, Tooltip, Menu } from '@material-ui/core'
 import { ApplicationState, Dispatch } from '../store'
 import { useSelector, useDispatch } from 'react-redux'
+import { selectLicenseIndicator } from '../models/plans'
+import { ListItemLocation } from './ListItemLocation'
 import { ListItemSetting } from './ListItemSetting'
 import { ListItemLink } from './ListItemLink'
 import { isRemoteUI } from '../helpers/uiHelper'
 import { DesktopUI } from './DesktopUI'
 import { PortalUI } from './PortalUI'
-import { spacing } from '../styling'
 import { Avatar } from './Avatar'
 import { emit } from '../services/Controller'
 
@@ -17,12 +18,15 @@ export const AvatarMenu: React.FC = () => {
   const [altMenu, setAltMenu] = React.useState<boolean>(false)
   const buttonRef = React.useRef<HTMLButtonElement>(null)
   const dispatch = useDispatch<Dispatch>()
-  const { user, remoteUI, preferences, backendAuthenticated } = useSelector((state: ApplicationState) => ({
-    user: state.auth.user,
-    remoteUI: isRemoteUI(state),
-    preferences: state.backend.preferences,
-    backendAuthenticated: state.auth.backendAuthenticated,
-  }))
+  const { user, remoteUI, preferences, backendAuthenticated, licenseIndicator } = useSelector(
+    (state: ApplicationState) => ({
+      user: state.auth.user,
+      remoteUI: isRemoteUI(state),
+      preferences: state.backend.preferences,
+      backendAuthenticated: state.auth.backendAuthenticated,
+      licenseIndicator: selectLicenseIndicator(state),
+    })
+  )
 
   const css = useStyles()
   const handleClose = () => {
@@ -38,7 +42,7 @@ export const AvatarMenu: React.FC = () => {
     <>
       <Tooltip title={user?.email || 'Sign in'} placement="right">
         <ButtonBase onClick={handleOpen} ref={buttonRef}>
-          <Avatar email={user?.email} button />
+          <Avatar email={user?.email || ''} button />
         </ButtonBase>
       </Tooltip>
       <Menu
@@ -52,15 +56,23 @@ export const AvatarMenu: React.FC = () => {
         elevation={2}
       >
         <div>
-          <ListItemLink title="Account" icon="user" href="https://link.remote.it/portal/account" dense />
-          <ListItemLink
-            title="Support"
-            icon="life-ring"
-            href="https://link.remote.it/documentation-desktop/overview"
+          <ListItemLocation dense title="Account" icon="user" pathname="/account" onClick={handleClose} />
+          <ListItemLocation
             dense
+            title="Settings"
+            icon="sliders-h"
+            pathname="/settings"
+            badge={licenseIndicator}
+            onClick={handleClose}
           />
-          <ListItemLink title="Documentation" icon="books" href="https://link.remote.it/docs/api" dense />
         </div>
+        <ListItemLink
+          title="Support"
+          icon="life-ring"
+          href="https://link.remote.it/documentation-desktop/overview"
+          dense
+        />
+        <ListItemLink title="APIs" icon="books" href="https://link.remote.it/docs/api" dense />{' '}
         {altMenu && (
           <ListItemSetting
             confirm
@@ -75,14 +87,6 @@ export const AvatarMenu: React.FC = () => {
           />
         )}
         <Divider />
-        <PortalUI>
-          <ListItemSetting
-            label="Switch to Legacy View"
-            icon="history"
-            onClick={() => (window.location.href = 'https://app.remote.it/#devices')}
-          />
-          <Divider />
-        </PortalUI>
         <DesktopUI>
           <ListItemSetting
             confirm
@@ -96,7 +100,6 @@ export const AvatarMenu: React.FC = () => {
             }}
           />
         </DesktopUI>
-
         <ListItemSetting
           confirm={backendAuthenticated}
           label="Sign out"
@@ -107,9 +110,8 @@ export const AvatarMenu: React.FC = () => {
             analyticsHelper.track('signOut')
           }}
         />
-        <DesktopUI>
-          {remoteUI || <Divider />}
-          {remoteUI || (
+        {remoteUI || (
+          <DesktopUI>
             <ListItemSetting
               confirm
               label="Quit"
@@ -118,8 +120,8 @@ export const AvatarMenu: React.FC = () => {
               confirmMessage="Quitting will not close your connections."
               onClick={() => emit('user/quit')}
             />
-          )}
-        </DesktopUI>
+          </DesktopUI>
+        )}
       </Menu>
     </>
   )
@@ -129,19 +131,9 @@ const useStyles = makeStyles(({ palette }) => ({
   label: {
     display: 'flex',
   },
-  avatar: {
-    borderWidth: 3,
-    borderStyle: 'solid',
-    borderColor: palette.white.main,
-    '&:hover': { borderColor: palette.primaryLight.main },
-  },
   menu: {
     '& .MuiMenu-list': {
       backgroundColor: palette.white.main,
-    },
-    '& .MuiListItem-root': {
-      paddingLeft: 0,
-      paddingRight: spacing.lg,
     },
   },
 }))

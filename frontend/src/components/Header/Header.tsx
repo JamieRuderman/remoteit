@@ -1,36 +1,44 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { makeStyles } from '@material-ui/core'
-import { ApplicationState } from '../../store'
+import { getOwnDevices, getActiveAccountId } from '../../models/accounts'
+import { makeStyles, useMediaQuery, Typography } from '@material-ui/core'
+import { ApplicationState, Dispatch } from '../../store'
+import { useSelector, useDispatch } from 'react-redux'
+import { getDeviceModel } from '../../models/accounts'
+import { HIDE_SIDEBAR_WIDTH } from '../../shared/constants'
+import { selectLimitsLookup } from '../../models/organization'
+import { canEditTags } from '../../models/tags'
 import { useNavigation } from '../../hooks/useNavigation'
-import { getOwnDevices } from '../../models/accounts'
 import { attributeName } from '../../shared/nameHelper'
 import { GlobalSearch } from '../GlobalSearch'
-import { useSelector } from 'react-redux'
-import { Typography } from '@material-ui/core'
-import { RegisterButton } from '../../buttons/RegisterButton'
-import { RefreshButton } from '../../buttons/RefreshButton'
 import { ColumnsButton } from '../../buttons/ColumnsButton'
-import { AccountSelect } from '../AccountSelect'
+import { RefreshButton } from '../../buttons/RefreshButton'
 import { FilterButton } from '../../buttons/FilterButton'
 import { Breadcrumbs } from '../Breadcrumbs'
 import { IconButton } from '../../buttons/IconButton'
-import { TestUI } from '../TestUI'
+import { isElectron } from '../../services/Browser'
 import { Title } from '../Title'
 import { Route } from 'react-router-dom'
 import { spacing } from '../../styling'
 
-export const Header: React.FC<{ singlePanel?: boolean }> = ({ singlePanel }) => {
-  const { searched, navigationBack, navigationForward, device } = useSelector((state: ApplicationState) => ({
-    searched: state.devices.searched,
-    navigationBack: state.ui.navigationBack,
-    navigationForward: state.ui.navigationForward,
-    device: getOwnDevices(state).find(d => d.id === state.backend.device.uid),
-  }))
+export const Header: React.FC<{ breadcrumbs?: boolean }> = ({ breadcrumbs }) => {
+  const { searched, navigationBack, navigationForward, feature, device, editTags } = useSelector(
+    (state: ApplicationState) => ({
+      feature: selectLimitsLookup(state),
+      selected: state.ui.selected,
+      searched: getDeviceModel(state).searched,
+      navigationBack: state.ui.navigationBack,
+      navigationForward: state.ui.navigationForward,
+      device: getOwnDevices(state).find(d => d.id === state.backend.device.uid),
+      editTags: canEditTags(state, getActiveAccountId(state)),
+    })
+  )
   const { handleBack, handleForward } = useNavigation()
   const [disabledForward, setDisabledForward] = useState<boolean>(false)
   const [disabledBack, setDisabledBack] = useState<boolean>(false)
   const [showSearch, setShowSearch] = useState<boolean>(false)
+  const hideSidebar = useMediaQuery(`(max-width:${HIDE_SIDEBAR_WIDTH}px)`)
   const inputRef = useRef<HTMLInputElement>(null)
+  const dispatch = useDispatch<Dispatch>()
   const css = useStyles()
 
   useEffect(() => {
@@ -40,35 +48,37 @@ export const Header: React.FC<{ singlePanel?: boolean }> = ({ singlePanel }) => 
 
   return (
     <div className={css.header}>
-      {singlePanel && (
+      {hideSidebar && (
+        <IconButton name="bars" size="md" color="grayDarker" onClick={() => dispatch.ui.set({ sidebarMenu: true })} />
+      )}
+      {!(showSearch || searched) && isElectron() && (
         <>
-          <RegisterButton />
-          <RefreshButton />
-          <AccountSelect label="Device List" />
+          <IconButton
+            title="Back"
+            disabled={disabledBack}
+            onClick={handleBack}
+            icon="chevron-left"
+            size="md"
+            color={disabledBack ? 'grayLight' : 'grayDarker'}
+          />
+          <IconButton
+            title="Forward"
+            disabled={disabledForward}
+            onClick={handleForward}
+            icon="chevron-right"
+            size="md"
+            color={disabledForward ? 'grayLight' : 'grayDarker'}
+          />
         </>
       )}
-      <IconButton
-        title="Back"
-        disabled={disabledBack}
-        onClick={handleBack}
-        icon="chevron-left"
-        size="lg"
-        color={disabledBack ? 'grayLight' : 'grayDark'}
-      />
-      <IconButton
-        title="Forward"
-        disabled={disabledForward}
-        onClick={handleForward}
-        icon="chevron-right"
-        size="lg"
-        color={disabledForward ? 'grayLight' : 'grayDark'}
-      />
+      <RefreshButton size="base" type="regular" color="grayDarker" />
       <Title className={css.search}>
         {!showSearch && !searched && (
           <IconButton
-            size="lg"
+            size="md"
             icon="search"
             className={css.button}
+            color="grayDarker"
             onClick={() => {
               setShowSearch(true)
               setTimeout(() => inputRef.current?.focus(), 20)
@@ -82,15 +92,22 @@ export const Header: React.FC<{ singlePanel?: boolean }> = ({ singlePanel }) => 
           </IconButton>
         )}
         {(!!showSearch || searched) && <GlobalSearch inputRef={inputRef} onClose={() => setShowSearch(false)} />}
-        {singlePanel && <Breadcrumbs />}
       </Title>
+      {breadcrumbs && <Breadcrumbs />}
       <Route path={['/devices', '/devices/select']} exact>
         <FilterButton />
         <ColumnsButton />
-        <TestUI>
-          <IconButton to="/devices/select" icon="check-square" title="Multi-select" />
-        </TestUI>
       </Route>
+      {feature.tagging && editTags && (
+        <>
+          <Route path="/devices" exact>
+            <IconButton to="/devices/select" icon="check-square" title="Show Select" />
+          </Route>
+          <Route path="/devices/select" exact>
+            <IconButton to="/devices" icon="check-square" type="solid" color="primary" title="Hide Select" />
+          </Route>
+        </>
+      )}
     </div>
   )
 }
@@ -108,7 +125,6 @@ const useStyles = makeStyles({
     zIndex: 8,
     // pointerEvents: 'none',
     // '-webkit-text-selection': 'none',
-    '& .MuiTypography-root': { marginLeft: spacing.lg, letterSpacing: 0.5 },
     '& .MuiIconButton-root': { '-webkit-app-region': 'no-drag', zIndex: 1 },
   },
   search: {
@@ -119,5 +135,9 @@ const useStyles = makeStyles({
   button: {
     justifyContent: 'flex-start',
     minHeight: spacing.xxl,
+  },
+  selected: {
+    marginRight: spacing.sm,
+    marginLeft: spacing.sm,
   },
 })

@@ -2,15 +2,24 @@ import analyticsHelper from '../helpers/analyticsHelper'
 import cloudController from '../services/cloudController'
 import Controller, { emit } from '../services/Controller'
 import { graphQLRequest, graphQLGetErrors, apiError } from '../services/graphQL'
-import { CLIENT_ID, CALLBACK_URL } from '../shared/constants'
+import {
+  CLIENT_ID,
+  CALLBACK_URL,
+  AUTH_API_URL,
+  COGNITO_USER_POOL_ID,
+  COGNITO_AUTH_DOMAIN,
+  REDIRECT_URL,
+  LANGUAGES,
+} from '../shared/constants'
 import { getLocalStorage, isElectron, isPortal, removeLocalStorage, setLocalStorage } from '../services/Browser'
+import { graphQLUpdateNotification } from '../services/graphQLMutation'
+import { getToken, r3 } from '../services/remote.it'
 import { CognitoUser } from '@remote.it/types'
 import { AuthService } from '@remote.it/services'
 import { createModel } from '@rematch/core'
 import { RootModel } from './rootModel'
 import { Dispatch } from '../store'
-import { REDIRECT_URL } from '../shared/constants'
-import { graphQLUpdateNotification } from '../services/graphQLMutation'
+import axios from 'axios'
 
 function sleep(ms) {
   return new Promise(resolve => {
@@ -22,9 +31,20 @@ const USER_KEY = 'user'
 const HOSTED_UI_KEY = 'amplify-signin-with-hostedUI'
 export const CHECKBOX_REMEMBER_KEY = 'remember-username'
 
+export interface AWSUser {
+  authProvider: string
+  email?: string
+  email_verified?: boolean
+  phone_number?: string
+  phone_number_verified?: boolean
+  given_name?: string //first_name
+  family_name?: string //last_name
+  gender?: string
+  'custom:backup_code'?: string
+}
+
 export interface AuthState {
   initialized: boolean
-  signInStarted: boolean
   authenticated: boolean
   backendAuthenticated: boolean
   signInError?: string
@@ -32,37 +52,47 @@ export interface AuthState {
   user?: IUser
   localUsername?: string
   notificationSettings: INotificationSetting
+  mfaMethod: string
+  AWSUser: AWSUser
 }
 
-const state: AuthState = {
+const defaultState: AuthState = {
   initialized: false,
   authenticated: false,
   backendAuthenticated: false,
-  signInStarted: false,
   signInError: undefined,
   user: undefined,
   authService: undefined,
   localUsername: undefined,
   notificationSettings: {},
+  mfaMethod: '',
+  AWSUser: { authProvider: '' },
+}
+
+export const authServiceConfig = {
+  cognitoClientID: CLIENT_ID,
+  cognitoUserPoolID: COGNITO_USER_POOL_ID,
+  cognitoAuthDomain: COGNITO_AUTH_DOMAIN,
+  checkSamlURL: AUTH_API_URL + '/checkSaml',
+  redirectURL: isPortal() || isElectron() ? '' : window.origin + '/v1/callback/',
+  callbackURL: isPortal() ? window.origin : isElectron() ? REDIRECT_URL : CALLBACK_URL,
+  signoutCallbackURL: isPortal() ? window.origin : isElectron() ? REDIRECT_URL : CALLBACK_URL,
 }
 
 export default createModel<RootModel>()({
-  state,
+  state: defaultState,
   effects: dispatch => ({
-    async init(_: void, rootState) {
-      let { user } = rootState.auth
-      console.log('AUTH INIT', { user })
+    async init(_, state) {
+      let { user } = state.auth
+      console.log('AUTH INIT START', { user })
       if (!user) {
-        const authService = new AuthService({
-          cognitoClientID: CLIENT_ID,
-          redirectURL: isPortal() || isElectron() ? '' : window.origin + '/v1/callback/',
-          callbackURL: isPortal() ? window.origin : isElectron() ? REDIRECT_URL : CALLBACK_URL,
-          signoutCallbackURL: isPortal() ? window.origin : isElectron() ? REDIRECT_URL : CALLBACK_URL,
-        })
+        const authService = new AuthService(authServiceConfig)
         await sleep(500)
-        dispatch.auth.setAuthService(authService)
+        await dispatch.auth.set({ authService })
+        await dispatch.auth.checkSession({ refreshToken: true })
       }
-      dispatch.auth.setInitialized()
+      dispatch.auth.set({ initialized: true })
+      console.log('AUTH INIT END')
     },
     async fetchUser(_, state) {
       const { auth } = dispatch as Dispatch
@@ -74,6 +104,7 @@ export default createModel<RootModel>()({
                 email
                 authhash
                 yoicsId
+                language
                 created
                 notificationSettings {
                   emailNotifications
@@ -92,14 +123,15 @@ export default createModel<RootModel>()({
           email: data.email,
           authHash: data.authhash,
           yoicsId: data.yoicsId,
+          language: data.language,
           created: data.created,
         }
-        auth.setUser(user)
+        auth.set({ user, signInError: undefined })
         setLocalStorage(state, USER_KEY, user)
         analyticsHelper.identify(data.id)
         if (data.authhash && data.yoicsId) {
           Controller.setupConnection({ username: data.yoicsId, authHash: data.authhash, guid: data.id })
-          auth.setNotificationSettings(data.notificationSettings)
+          auth.set({ notificationSettings: data.notificationSettings })
           auth.signedIn()
         } else console.warn('Login failed!', data)
       } catch (error) {
@@ -110,26 +142,54 @@ export default createModel<RootModel>()({
       const { auth } = dispatch as Dispatch
       try {
         const response = await graphQLUpdateNotification(metadata)
-        auth.setNotificationSettings(metadata)
+        auth.set({ notificationSettings: metadata })
         graphQLGetErrors(response)
       } catch (error) {
         await apiError(error)
       }
     },
-    async forceRefreshToken(_: void, rootState) {
-      if (!rootState.auth.authService) return
-      await rootState.auth.authService.forceTokenRefresh()
-    },
-    async checkSession(options: { refreshToken: boolean }, rootState) {
-      const { ui } = dispatch
-      if (!rootState.auth.authService) return
+    async changePassword(passwordValues: IPasswordValue, state) {
+      const existingPassword = passwordValues.currentPassword
+      const newPassword = passwordValues.password
+
       try {
-        const result = await rootState.auth.authService.checkSignIn(options)
+        await state.auth.authService?.changePassword(existingPassword, newPassword)
+        sleep(300)
+        window.location.reload()
+        dispatch.ui.set({ successMessage: `Password Changed Successfully` })
+      } catch (error) {
+        dispatch.ui.set({ errorMessage: `Change password error: ${error}` })
+      }
+    },
+    async changeLanguage(language: string) {
+      const { setLanguage } = dispatch.auth
+      await r3.post('/user/language/', { language })
+      dispatch.ui.set({ successMessage: `Language changed to ${LANGUAGES[language]}` })
+      setLanguage(language)
+    },
+    /* TODO validate and hook changeEmail up */
+    async changeEmail(email: string) {
+      const mailFormat = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/
+      if (mailFormat.test(email)) {
+        r3.post('/user/email/', { email }).then(() => dispatch.auth.setAWSUserEmail(email))
+        dispatch.ui.set({ successMessage: `Email modified successfully.` })
+      } else {
+        dispatch.ui.set({ errorMessage: `Invalid format.` })
+      }
+    },
+    async forceRefreshToken(_, state) {
+      if (!state.auth.authService) return
+      await state.auth.authService.forceTokenRefresh()
+    },
+    async checkSession(options: { refreshToken: boolean }, state) {
+      if (!state.auth.authService) return
+      try {
+        const result = await state.auth.authService.checkSignIn(options)
         if (result.cognitoUser) {
           await dispatch.auth.handleSignInSuccess(result.cognitoUser)
         } else {
           console.error('SESSION ERROR', result.error, result)
-          if (result.error?.message) ui.set({ errorMessage: result.error.message })
+          if (result.error?.message) dispatch.ui.set({ errorMessage: result.error.message })
         }
       } catch (error) {
         console.error('Check sign in error', error)
@@ -142,75 +202,82 @@ export default createModel<RootModel>()({
         } else if (!getLocalStorage(state, CHECKBOX_REMEMBER_KEY)) {
           window.localStorage.removeItem('username')
         }
-
         if (cognitoUser?.authProvider === 'Google') {
           setLocalStorage(state, HOSTED_UI_KEY, 'true')
         }
-        dispatch.auth.setAuthenticated(true)
-        dispatch.auth.fetchUser()
+        await dispatch.auth.set({ authenticated: true })
+        await dispatch.auth.fetchUser()
+        await dispatch.mfa.getAWSUser()
+        console.log('AUTHENTICATED SUCCESS')
       }
     },
     async getUsernameLocal() {
       const localUsername = localStorage.getItem('username')
-      dispatch.auth.setUsername(localUsername || undefined)
+      dispatch.auth.set({ localUsername })
     },
-    async backendAuthenticated(_: void, rootState) {
-      if (rootState.auth.authenticated) {
-        dispatch.auth.setBackendAuthenticated(true)
+    async backendAuthenticated(_, state) {
+      if (state.auth.authenticated) {
+        dispatch.auth.set({ backendAuthenticated: true })
+        console.log('BACKEND AUTHENTICATED')
+        if (!state.backend.initialized) {
+          emit('init')
+          console.log('INIT BACKEND')
+        }
       }
     },
-    async disconnect(_: void, rootState) {
-      console.log('DISCONNECT')
-      if (!rootState.auth.authenticated && !rootState.auth.backendAuthenticated && !isPortal()) {
+    async disconnect(_, state) {
+      if (!state.auth.authenticated && !state.auth.backendAuthenticated && !isPortal()) {
         await dispatch.auth.signedOut()
-        dispatch.auth.setDefaultError('Sign in failed, please try again.')
+        dispatch.auth.set({ signInError: 'Sign in failed, please try again.' })
       }
-      dispatch.auth.setBackendAuthenticated(false)
       dispatch.ui.set({ connected: false })
+      dispatch.auth.set({ backendAuthenticated: false })
     },
-    async signInError(error: string) {
-      dispatch.auth.setError(error)
+    async signInError(signInError: string) {
+      dispatch.auth.set({ signInError })
       //send message to backend to sign out
       emit('user/lock')
     },
-    async backendSignInError(error: string) {
+    async backendSignInError(signInError: string) {
       await dispatch.auth.signedOut()
-      dispatch.auth.setError(error)
+      dispatch.auth.set({ signInError })
     },
-    async dataReady(_: void, rootState) {
-      if (rootState.backend.initialized && !isPortal()) {
-        console.warn('BACKEND ALREADY INITIALIZED')
+    async dataReady(_, state) {
+      if (state.backend.initialized) {
+        console.warn('DATA ALREADY INITIALIZED')
         return
       }
       dispatch.backend.set({ initialized: true })
-      dispatch.licensing.init()
+      dispatch.plans.init()
       await cloudController.init()
       await dispatch.accounts.init()
       await dispatch.organization.init()
       await dispatch.devices.init()
       await dispatch.connections.init()
-      await dispatch.devices.fetch()
-      dispatch.applicationTypes.fetch()
-      dispatch.announcements.fetch()
+      await dispatch.tags.fetch()
+      dispatch.devices.fetch()
+      dispatch.devices.fetchConnections()
+      dispatch.contacts.fetch()
       dispatch.sessions.fetch()
+      dispatch.announcements.fetch()
+      dispatch.applicationTypes.fetch()
     },
     async signedIn() {
       if (isPortal()) dispatch.auth.dataReady()
       dispatch.ui.init()
     },
-    async signOut(_, rootState) {
-      if (rootState.auth.backendAuthenticated) emit('user/sign-out')
+    async signOut(_, state) {
+      if (state.auth.backendAuthenticated) emit('user/sign-out')
       else await dispatch.auth.signedOut()
     },
     /**
      * Gets called when the backend signs the user out
      */
-    async signedOut(_: void, state) {
+    async signedOut(_, state) {
       await state.auth.authService?.signOut()
       removeLocalStorage(state, HOSTED_UI_KEY)
       removeLocalStorage(state, USER_KEY)
-      dispatch.auth.signOutFinished()
-      dispatch.auth.signInFinished()
+      dispatch.auth.set({ user: undefined })
       dispatch.organization.reset()
       dispatch.accounts.reset()
       dispatch.connections.reset()
@@ -218,68 +285,43 @@ export default createModel<RootModel>()({
       dispatch.sessions.reset()
       dispatch.logs.reset()
       dispatch.search.reset()
-      dispatch.licensing.reset()
+      dispatch.announcements.reset()
+      dispatch.plans.reset()
+      dispatch.contacts.reset()
       dispatch.billing.reset()
       dispatch.backend.reset()
       dispatch.tags.reset()
+      dispatch.mfa.reset()
       dispatch.ui.reset()
       dispatch.accounts.setActive('')
       window.location.hash = ''
       emit('user/sign-out-complete')
-      dispatch.auth.setAuthenticated(false)
+      dispatch.auth.set({ authenticated: false })
       analyticsHelper.clearIdentity()
       cloudController.close()
       Controller.close()
     },
+    async globalSignOut() {
+      const Authorization = await getToken()
+      const response = await axios.get(`${AUTH_API_URL}/globalSignout`, {
+        headers: { Authorization },
+      })
+      console.log(`globalSignOut: `, response)
+      dispatch.auth.signOut()
+    },
   }),
   reducers: {
-    setInitialized(state: AuthState) {
-      state.initialized = true
+    setAWSUserEmail(state: AuthState, value: string) {
+      state.AWSUser.email = value
       return state
     },
-    signInStarted(state: AuthState) {
-      state.signInStarted = true
+    setLanguage(state: AuthState, language: string) {
+      if (!state.user) return state
+      state.user.language = language
       return state
     },
-    signInFinished(state: AuthState) {
-      state.signInStarted = false
-      return state
-    },
-    signOutFinished(state: AuthState) {
-      state.user = undefined
-      return state
-    },
-    setAuthenticated(state: AuthState, authenticated: boolean) {
-      state.authenticated = authenticated
-      return state
-    },
-    setBackendAuthenticated(state: AuthState, backendAuthenticated: boolean) {
-      state.backendAuthenticated = backendAuthenticated
-      return state
-    },
-    setError(state: AuthState, error: string) {
-      state.signInError = error
-      return state
-    },
-    setDefaultError(state: AuthState, error: string) {
-      state.signInError = state.signInError || error
-      return state
-    },
-    setUser(state: AuthState, user: IUser) {
-      state.user = user
-      state.signInError = undefined
-      return state
-    },
-    setAuthService(state: AuthState, authService: AuthService) {
-      state.authService = authService
-      return state
-    },
-    setUsername(state: AuthState, username: string | undefined) {
-      state.localUsername = username
-      return state
-    },
-    setNotificationSettings(state: AuthState, notificationSettings: INotificationSetting) {
-      state.notificationSettings = notificationSettings
+    set(state: AuthState, params: ILookup<any>) {
+      Object.keys(params).forEach(key => (state[key] = params[key]))
       return state
     },
   },

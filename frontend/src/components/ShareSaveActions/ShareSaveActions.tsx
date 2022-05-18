@@ -16,7 +16,7 @@ export function ShareSaveActions({
   return (
     <section>
       <Button color="primary" onClick={onSave} disabled={disabled || saving} variant="contained">
-        {saving ? 'Saving' : 'Save'}
+        {saving ? 'Sharing...' : 'Share'}
       </Button>
       <Button disabled={saving} onClick={onCancel}>
         Cancel

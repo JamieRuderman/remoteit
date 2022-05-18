@@ -5,55 +5,45 @@ import { Tooltip } from '@material-ui/core'
 import { useHistory } from 'react-router-dom'
 import { makeStyles, IconButton, Badge } from '@material-ui/core'
 import { getTargetPlatformIcon } from '../../helpers/platformHelper'
-import { spacing, Color } from '../../styling'
+import { spacing, FontSize } from '../../styling'
 
 export interface ConnectionStateIconProps extends Partial<IconProps> {
   connection?: IConnection
   service?: IService
   device?: IDevice
   mini?: boolean
+  size?: FontSize
 }
 
-export function ConnectionStateIcon({ connection, service, device, mini, ...props }: ConnectionStateIconProps) {
+export function ConnectionStateIcon({
+  connection,
+  service,
+  device,
+  mini,
+  size = 'md',
+  ...props
+}: ConnectionStateIconProps) {
   const history = useHistory()
   const instance = device || service
 
   let { name, type } = getTargetPlatformIcon(device?.targetPlatform)
 
-  let colorName: Color = 'grayDarker'
   let showQuality = device?.quality === 'POOR' || device?.quality === 'MODERATE'
   let element: any
-  let opacity: number = 1
-  let title: any = 'Online'
+  let quality: any
   let spin = false
 
-  if (connection?.enabled) {
-    colorName = 'primary'
-    title = 'Connected'
-  }
   if (connection?.connecting) {
     name = 'spinner-third'
     type = 'regular'
-    colorName = 'grayLight'
     showQuality = false
-    title = 'Connecting'
     spin = true
   }
   if (instance?.state === 'inactive') {
-    title = 'Offline'
     showQuality = false
   }
 
-  if (instance?.license === 'EVALUATION') {
-    colorName = 'warning'
-    title = 'Evaluation'
-  }
-  if (instance?.license === 'UNLICENSED') {
-    colorName = 'warning'
-    title = 'Unlicensed'
-  }
-
-  const css = useStyles({ colorName })
+  const css = useStyles()
 
   if (mini)
     element = (
@@ -62,14 +52,12 @@ export function ConnectionStateIcon({ connection, service, device, mini, ...prop
       </span>
     )
   else {
-    element = <Icon {...props} name={name} color={colorName} spin={spin} type={type} size="md" fixedWidth />
+    element = <Icon {...props} size={size} name={name} spin={spin} type={type} color="black" fullColor fixedWidth />
   }
 
   if (showQuality && device) {
-    title = (
+    quality = (
       <>
-        <b className={css.capitalize}>{title}</b>
-        <br />
         <Icon
           name="circle"
           color={device.quality === 'POOR' ? 'danger' : 'warning'}
@@ -80,6 +68,7 @@ export function ConnectionStateIcon({ connection, service, device, mini, ...prop
         Connectivity {device.quality.toLowerCase()}
       </>
     )
+
     element = (
       <IconButton
         className={css.button}
@@ -100,32 +89,27 @@ export function ConnectionStateIcon({ connection, service, device, mini, ...prop
     )
   }
 
-  return (
-    <Tooltip title={title} placement="top" arrow>
+  return quality ? (
+    <Tooltip title={quality} placement="top" arrow>
       <span className={css.icon}>{element}</span>
     </Tooltip>
+  ) : (
+    element
   )
-}
-
-type StyleProps = {
-  colorName: Color
 }
 
 const useStyles = makeStyles(({ palette }) => ({
   capitalize: { textTransform: 'capitalize' },
-  icon: {
-    lineHeight: 1,
-  },
-  mini: ({ colorName }: StyleProps) => ({
+  icon: { lineHeight: 1 },
+  mini: {
     '& > span': {
       height: 4,
       borderRadius: 4,
       width: spacing.md,
       display: 'inline-block',
       marginLeft: spacing.xxs,
-      backgroundColor: palette[colorName].main,
     },
-  }),
+  },
   combo: {
     '& sup': {
       position: 'absolute',

@@ -15,6 +15,7 @@ export const jssTheme = (isDark: boolean): ThemeOptions => {
     primaryLight: { main: colors.primaryLight, dark: darkColors.primaryLight },
     primaryLighter: { main: colors.primaryLighter, dark: darkColors.primaryLighter },
     primaryHighlight: { main: colors.primaryHighlight, dark: darkColors.primaryHighlight },
+    primaryBackground: { main: colors.primaryBackground, dark: darkColors.primaryBackground },
     successLight: { main: colors.successLight, dark: darkColors.successLight },
     success: { main: colors.success, dark: darkColors.success },
     successDark: { main: colors.successDark, dark: darkColors.successDark },
@@ -87,12 +88,14 @@ export const jssTheme = (isDark: boolean): ThemeOptions => {
           '& + .MuiButton-root': { marginLeft: spacing.sm },
         },
         contained: {
-          '&:hover': { backgroundColor: palette.grayDark.main },
-          '&, &.Mui-disabled': { backgroundColor: palette.gray.main, color: palette.alwaysWhite.main },
+          color: palette.alwaysWhite.main,
+          backgroundColor: palette.grayDark.main,
+          '&:hover': { backgroundColor: palette.grayDarker.main },
+          '&.Mui-disabled': { backgroundColor: palette.gray.main, color: palette.alwaysWhite.main },
           boxShadow: 'none',
         },
         text: { padding: `${spacing.sm}px ${spacing.md}px` },
-        outlined: { borderColor: palette.grayLighter.main },
+        outlined: { padding: `${spacing.sm}px ${spacing.md}px`, borderColor: palette.grayLighter.main },
         sizeLarge: {
           fontSize: fontSizes.sm,
           padding: `${spacing.sm}px ${spacing.xl}px`,
@@ -109,17 +112,26 @@ export const jssTheme = (isDark: boolean): ThemeOptions => {
         ripple: { color: palette.primary?.main || undefined },
       },
       MuiChip: {
-        root: { borderRadius: radius, backgroundColor: palette.grayLightest.main },
+        root: {
+          color: palette.grayDarker.main,
+          borderRadius: radius,
+          backgroundColor: palette.grayLightest.main,
+        },
+        colorPrimary: { color: palette.alwaysWhite.main },
+        colorSecondary: { color: palette.alwaysWhite.main },
         clickable: {
           '&:hover, &:focus': { backgroundColor: palette.primaryLighter.main },
         },
         sizeSmall: {
           height: 20,
           borderRadius: 10,
+          fontWeight: 400,
+          color: 'inherit',
+          letterSpacing: 0,
           fontSize: fontSizes.xxs,
           paddingLeft: spacing.xxs,
           paddingRight: spacing.xxs,
-          '& + .MuiChip-sizeSmall': { marginLeft: spacing.xxs },
+          marginRight: spacing.xxs,
         },
         outlined: {
           borderColor: palette.grayLighter.main,
@@ -127,11 +139,11 @@ export const jssTheme = (isDark: boolean): ThemeOptions => {
         },
       },
       MuiSnackbar: {
-        root: { '& .MuiSnackbarContent-root': { flexWrap: 'nowrap' } },
-        anchorOriginBottomLeft: { bottom: '80px !important' },
+        anchorOriginBottomLeft: { bottom: '80px !important', marginRight: spacing.lg },
       },
       MuiSnackbarContent: {
-        root: { borderRadius: radius },
+        root: { borderRadius: radius, flexWrap: 'nowrap', paddingRight: spacing.lg },
+        action: { '& .MuiIconButton-root': { marginRight: -spacing.sm } },
       },
       MuiCardHeader: {
         root: {
@@ -215,7 +227,6 @@ export const jssTheme = (isDark: boolean): ThemeOptions => {
           marginRight: spacing.md,
         },
         button: {
-          // '&:hover, &:focus': { backgroundColor: palette.primaryHighlight.main },
           '&:hover': { backgroundColor: palette.primaryHighlight.main },
         },
         secondaryAction: {
@@ -225,7 +236,6 @@ export const jssTheme = (isDark: boolean): ThemeOptions => {
         container: {
           '& .MuiListItemSecondaryAction-root': {},
           '& .MuiListItemSecondaryAction-root.hidden': { display: 'none' },
-          // '&:hover, &:focus': {
           '&:hover': {
             '& .MuiListItemSecondaryAction-root.hidden': { display: 'block' },
             '& .hoverHide': { display: 'none' },
@@ -259,22 +269,31 @@ export const jssTheme = (isDark: boolean): ThemeOptions => {
           },
           '& .MuiMenuItem-dense': { paddingTop: '2px !important', paddingBottom: '2px !important' },
           '& > .MuiList-padding': { padding: 0 },
+          '& .MuiListItemIcon-root': { minWidth: 50 },
+          '& .MuiListItem-root': {
+            paddingLeft: 0,
+            paddingRight: spacing.md,
+          },
+          '& .MuiDivider-root': {
+            marginTop: 10,
+            marginBottom: 10,
+          },
         },
       },
       MuiMenuItem: {
         root: {
-          '& .MuiListItemIcon-root': { minWidth: 50 },
           paddingLeft: 0,
-          paddingRight: spacing.lg,
+          paddingRight: spacing.md,
           color: palette.grayDarkest.main,
           fontSize: fontSizes.base,
           '&:hover, &:focus': { backgroundColor: palette.primaryLighter.main },
-        },
-        gutters: {
-          paddingLeft: spacing.sm,
-          paddingRight: spacing.sm,
-          marginLeft: spacing.sm,
-          marginRight: spacing.sm,
+          '&.MuiMenuItem-gutters': {
+            paddingLeft: spacing.sm,
+            paddingRight: spacing.sm,
+            marginLeft: spacing.sm,
+            marginRight: spacing.sm,
+            maxWidth: `calc(100% - ${spacing.sm * 2}px)`,
+          },
         },
       },
       MuiInput: {
@@ -329,18 +348,18 @@ export const jssTheme = (isDark: boolean): ThemeOptions => {
           '&:focused': { backgroundColor: palette.primaryHighlight.main },
         },
         input: { padding: '22px 12px 10px' },
-        underline: {
-          '&:before, &:after': { display: 'none' },
-        },
+        underline: { '&:before, &:after': { display: 'none' } },
         inputHiddenLabel: {
           paddingTop: spacing.sm,
           paddingBottom: spacing.sm,
         },
       },
+      MuiOutlinedInput: {
+        root: { borderRadius: radius },
+      },
       MuiSelect: {
-        select: {
-          '&:focus': { backgroundColor: 'none' },
-        },
+        // root: { borderRadius: radius, padding: `${spacing.sm}px ${spacing.md}px` },
+        select: { '&:focus': { backgroundColor: 'none' } },
       },
       MuiFormControl: {
         marginDense: {
@@ -420,14 +439,15 @@ export const jssTheme = (isDark: boolean): ThemeOptions => {
 }
 
 export function selectTheme(themeMode?: ApplicationState['ui']['themeMode']) {
-  let darkMode = isSystemDarkMode()
-  if (themeMode === 'dark') darkMode = true
-  if (themeMode === 'light') darkMode = false
+  const darkMode = isDarkMode(themeMode)
   console.log('SELECT THEME. DARK MODE:', darkMode)
   const theme = createTheme(jssTheme(darkMode))
   return theme
 }
 
-function isSystemDarkMode() {
-  return window?.matchMedia && window?.matchMedia('(prefers-color-scheme: dark)').matches
+export function isDarkMode(themeMode?: ApplicationState['ui']['themeMode']) {
+  let darkMode = window?.matchMedia && window?.matchMedia('(prefers-color-scheme: dark)').matches
+  if (themeMode === 'dark') darkMode = true
+  if (themeMode === 'light') darkMode = false
+  return darkMode
 }

@@ -1,6 +1,5 @@
 import { graphQLRequest, graphQLBasicRequest } from './graphQL'
 import { removeDeviceName } from '../shared/nameHelper'
-import { updateConnections } from '../helpers/connectionHelper'
 import { store } from '../store'
 
 const DEVICE_SELECT = `
@@ -16,6 +15,11 @@ const DEVICE_SELECT = `
   permissions
   license
   attributes
+  tags (accountId: $account) {
+    name
+    color
+    created
+  }
   access {
     user {
       id
@@ -70,6 +74,7 @@ const DEVICE_SELECT = `
 `
 
 export async function graphQLFetchDevices({
+  tag,
   size,
   from,
   state,
@@ -77,32 +82,24 @@ export async function graphQLFetchDevices({
   owner,
   name,
   account,
-  ids = [],
   platform,
 }: gqlOptions) {
   return await graphQLRequest(
-    ` query($ids: [String!]!, $size: Int, $from: Int, $name: String, $state: String, $account: String, $sort: String, $owner: Boolean, $platform: [Int!]) {
+    ` query($size: Int, $from: Int, $name: String, $state: String, $tag: ListFilter, $account: String, $sort: String, $owner: Boolean, $platform: [Int!]) {
         login {
           id
           account(id: $account) {
-            devices(size: $size, from: $from, name: $name, state: $state, sort: $sort, owner: $owner, platform: $platform) {
+            devices(size: $size, from: $from, name: $name, state: $state, tag: $tag, sort: $sort, owner: $owner, platform: $platform) {
               total
               items {
                 ${DEVICE_SELECT}
               }
             }
           }
-          connections: device(id: $ids)  {
-            ${DEVICE_SELECT}
-          }
-          contacts {
-            id
-            email
-          }
         }
       }`,
     {
-      ids,
+      tag,
       size,
       from,
       state,
@@ -110,17 +107,31 @@ export async function graphQLFetchDevices({
       owner,
       account,
       platform,
-      name: name?.trim() ? name : undefined,
+      name: name?.trim() || undefined,
     }
+  )
+}
+
+export async function graphQLFetchConnections(params: { account: string; ids: string[] }) {
+  return await graphQLRequest(
+    ` query($ids: [String!]!, $account: String) {
+        login {
+          id
+          connections: device(id: $ids)  {
+            ${DEVICE_SELECT}
+          }
+        }
+      }`,
+    params
   )
 }
 
 /* 
   Fetches single, or array of devices across shared accounts by id
 */
-export async function graphQLFetchDevice(id: string) {
+export async function graphQLFetchDevice(id: string, account: string) {
   return await graphQLRequest(
-    ` query($id: [String!]!) {
+    ` query($id: [String!]!, $account: String) {
         login {
           id
           device(id: $id)  {
@@ -130,6 +141,30 @@ export async function graphQLFetchDevice(id: string) {
       }`,
     {
       id,
+      account,
+    }
+  )
+}
+
+export async function graphQLFetchDeviceCount({ tag, state, sort, owner, account, platform }: gqlOptions) {
+  return await graphQLBasicRequest(
+    ` query($state: String, $tag: ListFilter, $account: String, $sort: String, $owner: Boolean, $platform: [Int!]) {
+        login {
+          id
+          account(id: $account) {
+            devices(state: $state, tag: $tag, sort: $sort, owner: $owner, platform: $platform) {
+              total
+            }
+          }
+        }
+      }`,
+    {
+      tag,
+      state,
+      sort,
+      owner,
+      account,
+      platform,
     }
   )
 }
@@ -166,7 +201,7 @@ export function graphQLAdaptor(
       license: d.license,
       permissions: d.permissions,
       attributes: processDeviceAttributes(d, metaData),
-      tags: labelsToTags(d),
+      tags: d.tags.map(t => ({ ...t, created: new Date(t.created) })),
       services: d.services.map(
         (s: any): IService => ({
           id: s.id,
@@ -202,7 +237,7 @@ export function graphQLAdaptor(
     })
   )
   store.dispatch.devices.userAttributes({ userAttributes: metaData.userAttributes })
-  return updateConnections(data)
+  return data
 }
 
 function processDeviceAttributes(response: any, metaData): IDevice['attributes'] {
@@ -221,13 +256,6 @@ function processAttributes(response: any): ILookup<any> {
   let result = { ...root, ...$ }
   delete result.$remoteit
   return result
-}
-
-function labelsToTags(response: any): IDevice['tags'] {
-  let tags: IDevice['tags'] = []
-  const attributes = processAttributes(response)
-  if (attributes.color) tags.push(1000 + attributes.color)
-  return tags
 }
 
 export async function graphQLCreateRegistration(services: IApplicationType['id'][], account: string) {

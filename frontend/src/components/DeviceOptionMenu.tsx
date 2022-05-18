@@ -17,7 +17,9 @@ export const DeviceOptionMenu: React.FC<Props> = ({ device, service, target }) =
   const handleClick = event => setAnchorEl(event.currentTarget)
   const handleClose = () => setAnchorEl(null)
 
-  if (!device || (userId !== device.accountId && !device.permissions.includes('MANAGE'))) return null
+  if (!device) return null
+
+  const manage = userId === device.accountId || device.permissions.includes('MANAGE')
 
   return (
     <>
@@ -34,25 +36,32 @@ export const DeviceOptionMenu: React.FC<Props> = ({ device, service, target }) =
         autoFocus={false}
         elevation={2}
       >
-        {service && (
-          <CopyMenuItem icon="share-alt" title="Copy connection link" value={`${PROTOCOL}connect/${service?.id}`} />
-        )}
-        <MenuItem
-          dense
-          to={`/devices/${device.id}/transfer`}
-          component={Link}
-          autoFocus={false}
-          disabled={!device.permissions.includes('MANAGE')}
-          disableGutters
-        >
-          <ListItemIcon>
-            <Icon name="share" size="md" />
-          </ListItemIcon>
-          <ListItemText primary="Transfer Device" />
-        </MenuItem>
-        <Divider />
-        <DeleteServiceMenuItem device={device} service={service} target={target} />
-        <DeleteDevice device={device} menuItem />
+        <div>
+          {service ? (
+            <CopyMenuItem icon="link" title="Service link" value={`${PROTOCOL}device/${device.id}/${service?.id}`} />
+          ) : (
+            <CopyMenuItem icon="link" title="Device link" value={`${PROTOCOL}devices/${device.id}`} />
+          )}
+        </div>
+        {manage && [
+          <MenuItem
+            dense
+            key="transfer"
+            to={`/devices/${device.id}/transfer`}
+            component={Link}
+            autoFocus={false}
+            disabled={!device.permissions.includes('MANAGE')}
+            disableGutters
+          >
+            <ListItemIcon>
+              <Icon name="share" size="md" />
+            </ListItemIcon>
+            <ListItemText primary="Transfer Device" />
+          </MenuItem>,
+          <Divider key="divider" />,
+          <DeleteServiceMenuItem key="deleteService" device={device} service={service} target={target} />,
+          <DeleteDevice key="deleteDevice" device={device} menuItem />,
+        ]}
       </Menu>
     </>
   )

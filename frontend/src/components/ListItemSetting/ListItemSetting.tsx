@@ -20,12 +20,13 @@ type Props = {
   hideIcon?: boolean
   label: string | React.ReactElement
   subLabel?: string | React.ReactElement
+  size?: 'small' | 'medium'
   button?: string
   toggle?: boolean
   tooltip?: string
   disabled?: boolean
   confirm?: boolean
-  confirmMessage?: string
+  confirmMessage?: string | React.ReactElement
   confirmTitle?: string
   quote?: boolean
   modified?: boolean
@@ -41,6 +42,7 @@ export const ListItemSetting = React.forwardRef<HTMLDivElement, Props>(
       hideIcon,
       label,
       subLabel,
+      size,
       button,
       toggle,
       tooltip,
@@ -87,27 +89,29 @@ export const ListItemSetting = React.forwardRef<HTMLDivElement, Props>(
     return (
       <>
         <ListItem
+          dense
           ref={ref}
           button={!!onClick as true}
           onClick={handleClick}
           disabled={disabled}
           onMouseEnter={() => setShowTip(true)}
           onMouseLeave={() => setShowTip(false)}
-          dense
         >
           <TooltipWrapper>
             <ListItemIcon className={hideIcon ? css.hideIcon : undefined}>
               <Icon ref={iconRef} name={icon} color={iconColor} size="md" modified={modified} fixedWidth />
             </ListItemIcon>
           </TooltipWrapper>
-          {quote ? <Quote margin={0}>{ListItemContent}</Quote> : ListItemContent}
+          {quote ? <Quote margin={null}>{ListItemContent}</Quote> : ListItemContent}
           <ListItemSecondaryAction>
             {showButton && (
               <Button onClick={onButtonClick} size="small">
                 {button}
               </Button>
             )}
-            {showToggle && <Switch edge="end" color="primary" disabled={disabled} checked={toggle} onClick={onClick} />}
+            {showToggle && (
+              <Switch edge="end" color="primary" disabled={disabled} checked={toggle} onClick={onClick} size={size} />
+            )}
           </ListItemSecondaryAction>
         </ListItem>
         {confirm && onClick && (

@@ -25,6 +25,15 @@ declare global {
     | 'service/uptime'
     | 'connectd/install/error'
 
+  type IOrganizationProvider = 'SAML'
+
+  type IOrganizationSettings = {
+    name?: string
+    domain?: string
+    providers?: null | IOrganizationProvider[]
+    accountId?: string
+  }
+
   type ILicenseChip = {
     name: string
     colorName: Color
@@ -132,6 +141,7 @@ declare global {
     planId?: string
     priceId?: string
     quantity: number
+    accountId: string
   }
 
   type LogType = 'general' | 'connectd' | 'alert'
@@ -203,22 +213,14 @@ declare global {
     connections?: IConnection[]
   }
 
-  interface ILabel {
-    id: number
-    key: 'NONE' | 'GRAY' | 'RED' | 'ORANGE' | 'YELLOW' | 'GREEN' | 'BLUE' | 'PURPLE'
-    name: string
-    color: string
-    hidden?: boolean
-  }
-
-  interface ITag {
-    id: number
-    name: string
-    label?: ILabel['id']
-    color?: string
-  }
-
   type IContextMenu = { el?: HTMLElement; serviceID?: string }
+
+  type IGlobalTooltip = { el?: HTMLElement; title: React.ReactElement | string; color?: string }
+
+  type ILayout = {
+    hideSidebar: boolean
+    singlePanel: boolean
+  }
 }
 
 declare module 'remote.it' {}
@@ -228,6 +230,7 @@ declare module '@material-ui/core/styles/createPalette' {
     primaryLight: Palette['primary']
     primaryLighter: Palette['primary']
     primaryHighlight: Palette['primaryHighlight']
+    primaryBackground: Palette['primaryBackground']
     secondary: Palette['secondary']
     successLight: Palette['successLight']
     success: Palette['success']
@@ -257,6 +260,7 @@ declare module '@material-ui/core/styles/createPalette' {
     primaryLight?: PaletteOptions['primary']
     primaryLighter?: PaletteOptions['primary']
     primaryHighlight?: Palette['primaryHighlight']
+    primaryBackground?: Palette['primaryBackground']
     secondary?: Palette['secondary']
     successLight?: Palette['successLight']
     success?: Palette['success']

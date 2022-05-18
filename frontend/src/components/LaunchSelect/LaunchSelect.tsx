@@ -8,8 +8,6 @@ import { spacing } from '../../styling'
 import { useApplication } from '../../hooks/useApplication'
 import { Quote } from '../Quote'
 import { Icon } from '../Icon'
-import { isPortal } from '../../services/Browser'
-import { LAUNCH_TYPE } from '../../shared/applications'
 
 type Props = {
   service: IService
@@ -35,16 +33,6 @@ export const LaunchSelect: React.FC<Props> = ({ service, connection }) => {
 
   const handleClick = () => setOpen(!open)
 
-  let inputProps = {
-    select: true,
-    disabled: false,
-  }
-
-  if (isPortal()) {
-    inputProps.select = false
-    inputProps.disabled = true
-  }
-
   return (
     <>
       <ListItem dense className={css.field} onClick={handleClick} button>
@@ -52,19 +40,19 @@ export const LaunchSelect: React.FC<Props> = ({ service, connection }) => {
           <Icon name={app.icon} size="md" modified={app.template !== app.defaultTemplate} fixedWidth />
         </ListItemIcon>
         <TextField
-          {...inputProps}
+          select
           fullWidth
           SelectProps={{ open }}
           label="Launch type"
-          value={isPortal() ? 'URL' : app.launchType}
+          value={app.launchType}
           onChange={e => handleChange(e.target.value)}
         >
-          <MenuItem value={LAUNCH_TYPE.URL}>URL</MenuItem>
-          <MenuItem value={LAUNCH_TYPE.COMMAND}>Command</MenuItem>
+          <MenuItem value="URL">URL</MenuItem>
+          <MenuItem value="COMMAND">Command</MenuItem>
         </TextField>
       </ListItem>
       <ListItem dense>
-        <Quote margin={0} noInset listItem>
+        <Quote margin={null} noInset listItem>
           <List className={css.indent} disablePadding>
             <AutoLaunchToggle connection={connection} service={service} />
             <InlineTemplateSetting app={app} connection={connection} service={service} />
@@ -76,7 +64,7 @@ export const LaunchSelect: React.FC<Props> = ({ service, connection }) => {
   )
 }
 
-const useStyles = makeStyles( ({ palette }) => ({
+const useStyles = makeStyles(({ palette }) => ({
   menu: { textTransform: 'capitalize' },
   indent: { marginRight: -spacing.lg },
   field: { '&:hover': { backgroundColor: palette.primaryHighlight.main } },

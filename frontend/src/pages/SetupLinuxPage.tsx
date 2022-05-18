@@ -1,40 +1,48 @@
 import React, { useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { ApplicationState, Dispatch } from '../store'
-import { getActiveOrganizationMembership } from '../models/accounts'
+import { getOrganization, getOwnOrganization, selectPermissions } from '../models/organization'
 import { makeStyles, Box, Typography, Link } from '@material-ui/core'
 import { DataCopy } from '../components/DataCopy'
+import { Notice } from '../components/Notice'
 import { Body } from '../components/Body'
 import { Icon } from '../components/Icon'
 import { Help } from '../components/Help'
 
-// const defaultServices = [28, 4]
-
 export const SetupLinuxPage: React.FC = () => {
-  const { user, organization, activeMembership, registrationCommand } = useSelector((state: ApplicationState) => ({
-    user: state.auth.user,
-    organization: state.organization,
-    activeMembership: getActiveOrganizationMembership(state),
-    registrationCommand: state.devices.registrationCommand,
-  }))
-  // const [type, setType] = useState<'curl' | 'wget'>('wget')
+  const { thisOrganization, organization, registrationCommand, permissions } = useSelector(
+    (state: ApplicationState) => ({
+      organization: getOrganization(state),
+      thisOrganization: getOwnOrganization(state),
+      registrationCommand: state.ui.registrationCommand,
+      permissions: selectPermissions(state),
+    })
+  )
   const dispatch = useDispatch<Dispatch>()
   const css = useStyles()
 
-  let accountId = user?.id || ''
-  let accountName = organization.name
-  if (activeMembership?.role === 'ADMIN') {
-    accountId = activeMembership.organization.id
-    accountName = activeMembership.organization.name
-  }
+  let accountId = thisOrganization.id
+  let accountName = thisOrganization.name
 
   useEffect(() => {
     dispatch.devices.createRegistration({ services: [28], accountId }) // ssh
-    return () => {
-      // remove registration code so we don't redirect to new device page
-      dispatch.devices.set({ registrationCommand: undefined })
+    return function cleanup() {
+      dispatch.ui.set({ registrationCommand: undefined }) // remove registration code so we don't redirect to new device page
     }
   }, [accountId])
+
+  if (permissions?.includes('MANAGE')) {
+    accountId = organization.id
+    accountName = organization.name
+  } else {
+    return (
+      <Body center>
+        <Box>
+          <Notice>You must have the manage permission to add a device to this organization.</Notice>
+        </Box>
+      </Body>
+    )
+  }
 
   return (
     <Body center>
@@ -53,10 +61,6 @@ export const SetupLinuxPage: React.FC = () => {
         )}
       </Typography>
       <section className={css.section}>
-        {/* <Box>
-          <Chip label="wget" variant={type === 'wget' ? 'default' : 'outlined'} onClick={() => setType('wget')} />
-          <Chip label="curl" variant={type === 'curl' ? 'default' : 'outlined'} onClick={() => setType('curl')} />
-        </Box> */}
         <DataCopy showBackground value={registrationCommand ? registrationCommand : '...generating command...'} />
       </section>
       <Typography variant="body2" align="center" color="textSecondary">
@@ -65,21 +69,6 @@ export const SetupLinuxPage: React.FC = () => {
           Troubleshooting & instructions.
         </Link>
       </Typography>
-      {/* <Typography variant="body2" color="textSecondary">
-        Services
-      </Typography>
-      <List className="collapseList">
-        <ListItemCheckbox
-          label="ssh"
-          // checked={ state[key] }
-          onClick={() => {
-            // state[key] = !state[key]
-            // setState([...state])
-          }}
-        >
-          <Chip label="ssh" size="small" />
-        </ListItemCheckbox>
-      </List> */}
     </Body>
   )
 }
@@ -89,9 +78,6 @@ const useStyles = makeStyles(({ palette }) => ({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    // '& .MuiBox-root': { display: 'flex', flexDirection: 'column' },
-    // '& .MuiChip-root': { marginRight: -20, paddingRight: 20 },
-    // '& .MuiChip-outlined': { borderWidth: 0, color: palette.gray.main },
-    '& .MuiIconButton-root': { minHeight: '3em', minWidth: 600 },
+    '& .MuiIconButton-root': { minHeight: '3em', minWidth: 600, maxWidth: 600 },
   },
 }))

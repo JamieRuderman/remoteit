@@ -1,59 +1,73 @@
-import React from 'react'
-import { makeStyles, Chip, TextField, MenuItem, Divider, TextFieldProps } from '@material-ui/core'
-import { ROLE } from '../models/organization'
-import { ApplicationState, Dispatch } from '../store'
+import React, { useState } from 'react'
+import { REGEX_FIRST_PATH } from '../shared/constants'
+import { useLocation, useHistory } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
+import { ApplicationState, Dispatch } from '../store'
+import { makeStyles, Chip, TextField, MenuItem, Divider, ListItem } from '@material-ui/core'
+import { getOwnOrganization, memberOrganization } from '../models/organization'
 import { getActiveAccountId } from '../models/accounts'
 import { spacing } from '../styling'
-import { useHistory } from 'react-router-dom'
 
-export const AccountSelect: React.FC<TextFieldProps> = props => {
+export const AccountSelect: React.FC = () => {
   const css = useStyles()
   const history = useHistory()
-  const { accounts, devices } = useDispatch<Dispatch>()
+  const location = useLocation()
+  const [open, setOpen] = useState<boolean>(false)
+  const { accounts, devices, tags, logs } = useDispatch<Dispatch>()
   const { user, options, activeId, orgName } = useSelector((state: ApplicationState) => ({
     user: state.auth.user || { id: '', email: '' },
     activeId: getActiveAccountId(state),
-    options: state.accounts.membership.map(m => ({ id: m.organization.id, name: m.organization.name, role: m.role })),
-    orgName: state.organization.name,
+    options: state.accounts.membership.map(m => ({
+      id: m.account.id,
+      name: memberOrganization(state.organization.all, m.account.id).name || 'Personal',
+      roleId: m.roleId,
+      roleName: m.roleName,
+    })),
+    orgName: getOwnOrganization(state).name,
   }))
 
   options.sort((a, b) => (a.name > b.name ? 1 : -1))
-  options.unshift({ id: user.id, name: orgName || user.email, role: 'OWNER' })
+  options.unshift({ id: user.id, name: orgName || 'Personal', roleId: 'OWNER', roleName: 'Owner' })
   if (options.length < 2) return null
 
   return (
-    <TextField
-      {...props}
-      select
-      label="Organization"
-      variant="filled"
-      value={activeId}
-      className={css.selectMenu}
-      onChange={async event => {
-        const id = event.target.value as string
-        if (id) {
-          await accounts.setActive(id.toString())
-          devices.set({ query: '', searched: false, from: 0 })
-          devices.fetch()
-          // history.push('/devices')
-        }
-      }}
-    >
-      {options.map(option => (
-        <MenuItem className={css.menu} value={option.id} key={option.id}>
-          {option.name}
-          <Chip label={ROLE[option.role]} size="small" />
-        </MenuItem>
-      ))}
-      <Divider className={css.divider} />
-      <MenuItem onClick={() => history.push('/devices/membership')}>Manage memberships...</MenuItem>
-    </TextField>
+    <ListItem dense className={css.wrapper} button onClick={() => setOpen(!open)}>
+      <TextField
+        select
+        fullWidth
+        onSelect={() => setOpen(false)}
+        SelectProps={{ open }}
+        label="Organization"
+        value={activeId}
+        className={css.selectMenu}
+        onChange={async event => {
+          const id = event.target.value as string
+          const menu = location.pathname.match(REGEX_FIRST_PATH)
+          if (id) {
+            await logs.reset()
+            await accounts.setActive(id.toString())
+            devices.fetchIfEmpty()
+            tags.fetchIfEmpty()
+            if (menu && menu[0] === '/devices') history.push('/devices')
+          }
+        }}
+      >
+        {options.map(option => (
+          <MenuItem className={css.menu} value={option.id} key={option.id}>
+            {option.name}
+            <Chip label={option.roleName} size="small" />
+          </MenuItem>
+        ))}
+        <Divider className={css.divider} />
+        <MenuItem onClick={() => history.push('/devices/membership')}>Manage memberships...</MenuItem>
+      </TextField>
+    </ListItem>
   )
 }
 
 const useStyles = makeStyles(({ palette }) => ({
-  selectMenu: { '& .MuiChip-root': { display: 'none' } },
+  wrapper: { marginTop: spacing.md },
+  selectMenu: { '& .MuiChip-root': { display: 'none' }, marginLeft: spacing.sm },
   menu: {
     display: 'flex',
     justifyContent: 'space-between',

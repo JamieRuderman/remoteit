@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react'
 import { DateTime } from 'luxon'
+import { getActiveAccountId } from '../../models/accounts'
 import { useDispatch, useSelector } from 'react-redux'
 import { Dispatch, ApplicationState } from '../../store'
 import { makeStyles, List, ListItem, ListItemSecondaryAction } from '@material-ui/core'
-import { getLimit, limitDays } from '../../models/licensing'
+import { selectLimit, limitDays } from '../../models/plans'
 import { CSVDownloadButton } from '../../buttons/CSVDownloadButton'
 import { DatePicker } from '../DatePicker'
 
@@ -14,17 +15,20 @@ export const EventHeader: React.FC<{ device?: IDevice }> = ({ device }) => {
   const dispatch = useDispatch<Dispatch>()
   const { fetch, set } = dispatch.logs
 
-  const { events, deviceId, logLimit, minDate, selectedDate } = useSelector((state: ApplicationState) => ({
-    logLimit: getLimit('log-limit', state) || 'P1W',
-    ...state.logs,
-  }))
+  const { events, deviceId, logLimit, activeAccount, minDate, selectedDate } = useSelector(
+    (state: ApplicationState) => ({
+      logLimit: selectLimit('log-limit', state) || 'P1W',
+      activeAccount: getActiveAccountId(state),
+      ...state.logs,
+    })
+  )
 
   let allowed = limitDays(logLimit)
 
   const getMinDays = () => {
     let lifetimeDays = 0
     if (device) {
-      const createdAt = device?.createdAt ? new Date(device?.createdAt) : new Date()
+      const createdAt = device?.createdAt ? new Date(device.createdAt) : new Date()
       lifetimeDays = Math.floor((new Date().getTime() - createdAt.getTime()) / DAY)
     }
     let limit = allowed
@@ -47,7 +51,7 @@ export const EventHeader: React.FC<{ device?: IDevice }> = ({ device }) => {
       set({ deviceId: device?.id, from: 0, events: { ...events, items: [] } })
       fetch()
     }
-  }, [])
+  }, [activeAccount])
 
   const handleChangeDate = (date: any) => {
     set({ selectedDate: date, from: 0, minDate, maxDate: date, events: { ...events, items: [] } })

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react'
+import { REGEX_LAST_PATH } from '../../shared/constants'
 import { Divider, List, ListItem, Typography } from '@material-ui/core'
 import { ListItemCheckbox } from '../ListItemCheckbox'
 import { ServiceCheckboxes } from './ServiceCheckboxes'
 import { ShareSaveActions } from '../ShareSaveActions'
-import { useHistory, useParams, useLocation } from 'react-router-dom'
-import { useSelector } from '../../hooks/reactReduxHooks'
+import { useHistory, useLocation } from 'react-router-dom'
 import { ApplicationState, Dispatch } from '../../store'
+import { useSelector } from '../../hooks/reactReduxHooks'
 import { useDispatch } from 'react-redux'
 
 export interface SharingDetails {
@@ -19,41 +20,29 @@ export interface SharingAccess {
   services: string[]
 }
 
-export function SharingForm({
-  device,
-  user,
-}: {
-  device: IDevice
-  user?: IUser
-}): JSX.Element {
-  const history = useHistory()
-  const {
-    script,
-    scriptIndeterminate,
-    users,
-    selectedServices,
-  } = useSelector((state: ApplicationState) => state.shares.currentDevice || {})
-
-  const location = useLocation()
-  const { email = '' } = useParams<{ email: string }>()
+export function SharingForm({ device, user }: { device: IDevice; user?: IUser }): JSX.Element {
   const saving = useSelector((state: ApplicationState) => state.shares.sharing)
+  const { script, scriptIndeterminate, users, selectedServices } = useSelector(
+    (state: ApplicationState) => state.shares.currentDevice || {}
+  )
+  const history = useHistory()
+  const location = useLocation()
   const { shares } = useDispatch<Dispatch>()
   const [allowScript, setAllowScript] = useState<boolean>(script)
 
-  const disabled = !users?.length && email === ''
+  const disabled = !users?.length && !user
   const handleChangeServices = (services: string[]) => {
     shares.changeServices(services)
   }
 
   useEffect(() => {
-    const crumbs = location.pathname.substr(1).split('/')
+    const crumbs = location.pathname.substring(1).split('/')
     crumbs[2] !== 'users' && handleChangeServices([crumbs[2]])
   }, [])
 
   useEffect(() => {
     setAllowScript(script)
   }, [script])
-
 
   const handleChangeScripting = () => shares.changeScript(!script)
 
@@ -83,30 +72,30 @@ export function SharingForm({
     if (device && shareData) {
       await shares.updateDeviceState({ device, emails: shareData.email, scripting: script, services, isNew })
     }
-    goToNext()
+    goBack()
   }
-  const goToNext = () =>
-    email === ''
-      ? history.push(location.pathname.replace('/share', ''))
-      : history.push(location.pathname.replace(`/${email}`, ''))
 
+  const goBack = () => history.push(location.pathname.replace(REGEX_LAST_PATH, ''))
 
   const action = () => {
     let action = false
-    let emails: any
-    if (email === '') {
+    let emails: string[]
+    if (user) {
+      emails = [user?.email]
+    } else {
       action = true
       emails = users
-    } else {
-      emails = [user?.email]
     }
-    handleShare({
-      access: {
-        script,
-        services: selectedServices,
+    handleShare(
+      {
+        access: {
+          script,
+          services: selectedServices,
+        },
+        emails,
       },
-      emails,
-    }, action)
+      action
+    )
   }
 
   return (
@@ -114,7 +103,8 @@ export function SharingForm({
       <List>
         <ListItem>
           <Typography variant="body2" color="textSecondary">
-            Share this device by entering the user's email and choosing the services you'd like to provide them access to.
+            Share this device by entering the user's email and choosing the services you'd like to provide them access
+            to.
           </Typography>
         </ListItem>
       </List>
@@ -136,15 +126,11 @@ export function SharingForm({
           onClick={handleChangeScripting}
         />
       </List>
-
       <ShareSaveActions
-        onCancel={() => history.push(location.pathname.replace(email ? `/${email}` : '/share', ''))}
+        onCancel={() => history.push(location.pathname.replace(user ? `/${user.email}` : '/share', ''))}
         onSave={action}
         disabled={disabled}
       />
     </>
   )
 }
-
-
-

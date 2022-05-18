@@ -10,16 +10,18 @@ import { Icon } from '../Icon'
 
 type Props = {
   value?: string | number
-  label?: JSX.Element | string
-  icon?: JSX.Element | string
-  actionIcon?: JSX.Element
+  label?: React.ReactElement | string
+  icon?: React.ReactElement | string
+  actionIcon?: React.ReactElement
   displayValue?: string | number
   disabled?: boolean
+  loading?: boolean
+  color?: string
   resetValue?: string | number
   hideIcon?: boolean
   fieldRef?: React.RefObject<HTMLInputElement>
   debug?: boolean
-  warning?: string
+  warning?: React.ReactElement | string
   modified?: boolean
   disableGutters?: boolean
   onSubmit: () => void
@@ -36,6 +38,8 @@ export const InlineSetting: React.FC<Props> = ({
   actionIcon,
   displayValue,
   disabled,
+  loading,
+  color,
   debug,
   warning,
   resetValue,
@@ -123,15 +127,20 @@ export const InlineSetting: React.FC<Props> = ({
       <ListItem button onClick={triggerEdit} disabled={disabled} disableGutters={disableGutters} dense>
         {icon}
         <Title>
-          <ListItemText>
+          <ListItemText style={{ color }}>
             {label && <InputLabel shrink>{label}</InputLabel>}
-            {displayValue || value || '–'}
+            {(displayValue === undefined ? value : displayValue) || '–'}
           </ListItemText>
         </Title>
         {!disabled && (
           <ListItemSecondaryAction className="hidden">
             <EditButton onClick={triggerEdit} />
             {onDelete && <DeleteButton onDelete={onDelete} warning={warning} />}
+          </ListItemSecondaryAction>
+        )}
+        {loading && (
+          <ListItemSecondaryAction>
+            <Icon spin type="solid" name="spinner-third" color="primary" inlineLeft />
           </ListItemSecondaryAction>
         )}
       </ListItem>
@@ -141,12 +150,13 @@ export const InlineSetting: React.FC<Props> = ({
   return edit ? editForm : viewForm
 }
 
-const useStyles = makeStyles( ({ palette }) => ({
+const useStyles = makeStyles(({ palette }) => ({
   form: {
     display: 'flex',
     width: '100%',
     marginRight: 120,
     alignItems: 'center',
+    '& .MuiInput-input': { paddingTop: 9, paddingBottom: 10.5, marginLeft: spacing.sm },
     '& .MuiFilledInput-input': { paddingTop: 21, paddingBottom: 10, fontSize: 14 },
     '& .MuiFilledInput-multiline': { paddingTop: 0, paddingBottom: 0 },
     '& .select': { marginLeft: 0, marginTop: 8, height: 40, '& .MuiInput-root': { marginTop: 9 } },

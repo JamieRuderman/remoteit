@@ -135,6 +135,7 @@ declare global {
     connecting?: boolean
     createdTime?: number // unix timestamp track for garbage cleanup
     default?: boolean // if the connection is in a default state - gets removed on modification
+    description?: string
     deviceID?: string
     disconnecting?: boolean
     enabled: boolean // if the connection is active
@@ -228,7 +229,7 @@ declare global {
     targetPlatform: number
     availability: number
     instability: number
-    tags: number[]
+    tags: ITag[]
     quality: 'GOOD' | 'MODERATE' | 'POOR' | 'UNKNOWN'
     version: number // daemon version
     configurable: boolean // cloudshift device
@@ -283,12 +284,34 @@ declare global {
       defaultPort?: number
       launchTemplate?: string
       commandTemplate?: string
+      targetHost?: string
+      description?: strings
     }
+  }
+
+  type ITag = {
+    name: string
+    color: ILabel['id']
+    created?: Date
+  }
+
+  type ITagOperator = 'ALL' | 'ANY'
+
+  type ITagFilter = {
+    operator: ITagOperator
+    values: string[]
+  }
+
+  type ILabel = {
+    id: number
+    name: string
+    color: string
+    hidden?: boolean
   }
 
   type ILicenseTypes = 'UNKNOWN' | 'EVALUATION' | 'LICENSED' | 'UNLICENSED' | 'NON_COMMERCIAL' | 'EXEMPT' | string
 
-  type IPermission = 'CONNECT' | 'SCRIPTING' | 'MANAGE'
+  type IPermission = 'VIEW' | 'CONNECT' | 'SCRIPTING' | 'MANAGE' | 'ADMIN'
 
   type IUser = {
     id: string
@@ -298,6 +321,8 @@ declare global {
     created?: Date
     timestamp?: Date
     scripting?: boolean // @FIXME why do we have scripting on a user seems like a share setting
+    apiKey?: string
+    language?: string
   }
 
   type INotificationSetting = {
@@ -311,34 +336,44 @@ declare global {
   type IUserRef = {
     id: string
     email: string
-  }
-
-  type IOrganization = {
-    id: string
-    name: string
-    created: Date
-    samlName: string
-    members?: IOrganizationMember[]
-    account?: IUserRef
-    licenses: ILicense[]
+    created?: Date
   }
 
   type IOrganizationMember = {
     user: IUserRef
     organizationId: string
     license: ILicenseTypes
-    role: IOrganizationRole
-    created: Date
+    roleId: IOrganizationRoleIdType
+    created?: Date
   }
 
-  type IOrganizationMembership = {
-    organization: IOrganization
-    role: IOrganizationRole
+  type IMembership = {
+    roleId: IOrganizationRoleIdType
+    roleName: string
     created: Date
     license: ILicenseTypes
+    account: IUserRef
   }
 
-  type IOrganizationRole = 'OWNER' | 'ADMIN' | 'MEMBER' | 'REMOVE'
+  type IOrganizationRoleIdType = 'OWNER' | 'ADMIN' | 'MEMBER' | 'CUSTOM' | 'REMOVE' | string
+
+  type IOrganizationRole = {
+    id: string
+    name: string
+    system?: boolean
+    disabled?: boolean
+    permissions: IPermission[]
+    tag?: ITagFilter
+  }
+
+  type ICreateRole = {
+    id?: string
+    name?: string
+    grant?: IPermission[]
+    revoke?: IPermission[]
+    tag?: ITagFilter
+    accountId: string
+  }
 
   type IGeo = {
     countryName: string
@@ -358,7 +393,7 @@ declare global {
     target: {
       id: string
       deviceId: string
-      platform: number
+      platform?: number
       name: string // combined service + device names
     }
   }
@@ -413,6 +448,18 @@ declare global {
     description: string
   }
 
+  interface IPasswordValue {
+    currentPassword: string
+    password: string
+  }
+
+  interface IAccessKey {
+    key: string
+    enabled: boolean
+    created: Date
+    lastUsed: Date
+  }
+
   type IRouteType = 'failover' | 'p2p' | 'proxy'
 
   interface IEvent {
@@ -441,6 +488,7 @@ declare global {
   }
 
   type gqlOptions = {
+    tag?: ITagFilter
     size: number
     from: number
     account: string
@@ -448,7 +496,6 @@ declare global {
     owner?: boolean
     sort?: string
     name?: string
-    ids?: string[]
     platform?: number[]
   }
 
@@ -546,6 +593,7 @@ declare global {
   type IPreferences = {
     version: string
     cliVersion: string
+    cliConfigVersion?: number
     autoUpdate?: boolean
     openAtLogin?: boolean
     remoteUIOverride?: boolean
@@ -625,6 +673,7 @@ declare global {
     footer?: boolean
     chipPrimary?: boolean
     Menu?: React.FC
+    divider?: boolean
   }
 }
 

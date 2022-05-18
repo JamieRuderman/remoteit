@@ -1,8 +1,7 @@
 import React from 'react'
 import { Icon } from './Icon'
 import { spacing, fontSizes } from '../styling'
-import { Paper, Box } from '@material-ui/core'
-import { makeStyles, alpha } from '@material-ui/core/styles'
+import { makeStyles, alpha, Paper, Box } from '@material-ui/core'
 import classnames from 'classnames'
 
 type Props = {
@@ -62,13 +61,14 @@ const useStyles = makeStyles(({ palette }) => ({
   notice: ({ fullWidth, gutterBottom, gutterTop }: Props) => ({
     flexGrow: 1,
     alignItems: 'center',
-    margin: `${spacing.xxs}px ${fullWidth ? 0 : spacing.md}px`,
-    marginBottom: gutterBottom ? spacing.md : spacing.xxs,
-    marginTop: gutterTop ? spacing.md : spacing.xxs,
+    marginLeft: fullWidth ? 0 : spacing.md,
+    marginRight: fullWidth ? 0 : spacing.md,
+    marginBottom: gutterBottom ? spacing.md : 0,
+    marginTop: gutterTop ? spacing.md : 0,
     padding: `${spacing.sm}px ${spacing.md}px`,
     display: 'flex',
     fontWeight: 500,
-    '& .MuiBox-root': { flexGrow: 1, marginTop: spacing.xxs },
+    '& .MuiBox-root': { flexGrow: 1, marginTop: spacing.xxs, marginRight: spacing.xs },
     '& .MuiButton-root': { minWidth: 90, marginLeft: spacing.md },
     '& .MuiIconButton-root': { marginLeft: spacing.sm },
     '& > svg': { marginLeft: spacing.xxs, marginRight: spacing.md, width: 21 },

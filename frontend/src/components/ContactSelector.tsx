@@ -2,22 +2,20 @@ import React from 'react'
 import CreatableSelect from 'react-select/creatable'
 import { Theme } from 'react-select'
 import { makeStyles } from '@material-ui/core'
-import { contactOptions } from '../helpers/contacts'
+import { contactOptions } from '../models/contacts'
 import { spacing, fontSizes } from '../styling'
 import { Typography, Link } from '@material-ui/core'
+import isEmail from 'validator/lib/isEmail'
 
 type Props = {
-  selected?: IUser[]
   contacts: IUserRef[]
   onChange: (emails: string[]) => void
   isTransfer?: boolean
 }
 
-export const ContactSelector: React.FC<Props> = ({ selected = [], contacts, onChange, isTransfer = false }) => {
-  const options = contactOptions(contacts, selected)
+export const ContactSelector: React.FC<Props> = ({ contacts, onChange, isTransfer = false }) => {
+  const options = contactOptions(contacts)
   const css = useStyles()
-
-  const mailFormat = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/
 
   const handleChange = (opts?: any) => {
     if (!isTransfer) {
@@ -31,7 +29,7 @@ export const ContactSelector: React.FC<Props> = ({ selected = [], contacts, onCh
 
   const validateEmail = (inputValue: string) => {
     return (
-      mailFormat.test(inputValue) && (
+      isEmail(inputValue) && (
         <Typography variant="body2" color="textSecondary">
           Add <Link>{inputValue}</Link>
         </Typography>
@@ -51,7 +49,7 @@ export const ContactSelector: React.FC<Props> = ({ selected = [], contacts, onCh
       classNamePrefix="select"
       placeholder={isTransfer ? 'Enter new device owner...' : 'Enter an email...'}
       onChange={handleChange}
-      isValidNewOption={v => mailFormat.test(v)}
+      isValidNewOption={v => isEmail(v)}
       formatCreateLabel={validateEmail}
       styles={customStyles}
     />

@@ -13,7 +13,7 @@ import { Body } from '../../components/Body'
 import analyticsHelper from '../../helpers/analyticsHelper'
 import heartbeat from '../../services/Heartbeat'
 
-export const ConnectionsPage: React.FC<{ singlePanel?: boolean }> = ({ singlePanel }) => {
+export const ConnectionsPage: React.FC = () => {
   const css = useStyles()
   const history = useHistory()
   const { local, proxy, other, recent } = useSelector((state: ApplicationState) => {
@@ -49,7 +49,7 @@ export const ConnectionsPage: React.FC<{ singlePanel?: boolean }> = ({ singlePan
         target: {
           id: connection.id,
           deviceId: device?.id || '',
-          platform: device?.targetPlatform || 0,
+          platform: device?.targetPlatform,
           name: connection.name || service?.name || '',
         },
       }
@@ -86,7 +86,7 @@ export const ConnectionsPage: React.FC<{ singlePanel?: boolean }> = ({ singlePan
       )}
       <SessionsList title="Proxy" sessions={proxy} />
       <SessionsList title="Network" sessions={local} />
-      <SessionsList title="Others" sessions={other} other />
+      <SessionsList title="Other Connections" sessions={other} other />
       <SessionsList
         title="Recent"
         sessions={recent}

@@ -15,11 +15,14 @@ import { DownloadDesktopPage } from '../pages/DownloadDesktopPage'
 import { DevicesPage } from '../pages/DevicesPage'
 import { LanSharePage } from '../pages/LanSharePage'
 import { LicensingPage } from '../pages/LicensingPage'
-import { OrganizationPage } from '../pages/OrganizationPage'
-import { AccountSharePage } from '../pages/AccountSharePage'
 import { AnnouncementsPage } from '../pages/AnnouncementsPage'
-import { AccountAccessPage } from '../pages/AccountAccessPage'
+import { OrganizationPage } from '../pages/OrganizationPage'
 import { OrganizationAddPage } from '../pages/OrganizationAddPage'
+import { OrganizationRolePage } from '../pages/OrganizationRolePage'
+import { OrganizationEmptyPage } from '../pages/OrganizationEmptyPage'
+import { OrganizationRolesPage } from '../pages/OrganizationRolesPage'
+import { OrganizationMembersPage } from '../pages/OrganizationMembersPage'
+import { OrganizationSettingsPage } from '../pages/OrganizationSettingsPage'
 import { OrganizationMembershipPage } from '../pages/OrganizationMembershipPage'
 import { DynamicPanel } from '../components/DynamicPanel'
 import { OptionsPage } from '../pages/OptionsPage'
@@ -33,8 +36,12 @@ import { NotificationsPage } from '../pages/NotificationsPage'
 import { isPortal, getOs } from '../services/Browser'
 import { ShareFeedback } from '../pages/ShareFeedback'
 import { Panel } from '../components/Panel'
+import { ProfilePage } from '../pages/ProfilePage'
+import { AccountPage } from '../pages/AccountPage'
+import { SecurityPage } from '../pages/SecurityPage'
+import { AccessKeyPage } from '../pages/AccessKeyPage'
 
-export const Router: React.FC<{ singlePanel?: boolean }> = ({ singlePanel }) => {
+export const Router: React.FC<{ layout: ILayout }> = ({ layout }) => {
   const history = useHistory()
   const { ui } = useDispatch<Dispatch>()
   const { remoteUI, redirect, targetDevice, registered, os } = useSelector((state: ApplicationState) => ({
@@ -55,32 +62,34 @@ export const Router: React.FC<{ singlePanel?: boolean }> = ({ singlePanel }) => 
 
   return (
     <Switch>
+      {/* Start */}
+      <Redirect from="/" to="/devices" exact />
+      {/* Deep links */}
       <Redirect
-        from={'/connect/:serviceID'}
+        from="/connect/:serviceID"
         to={{
           pathname: '/connections/:serviceID',
           state: { autoConnect: true },
         }}
       />
       <Redirect
-        from={'/launch/:serviceID'}
+        from="/launch/:serviceID"
         to={{
           pathname: '/connections/:serviceID',
           state: { autoLaunch: true },
         }}
       />
       <Redirect
-        from={'/copy/:serviceID'}
+        from="/copy/:serviceID"
         to={{
           pathname: '/connections/:serviceID',
           state: { autoCopy: true },
         }}
       />
-
       {/* Connections */}
       <Route path={['/connections/new/:deviceID/:serviceID', '/connections']}>
         <DynamicPanel
-          primary={<ConnectionsPage singlePanel={singlePanel} />}
+          primary={<ConnectionsPage />}
           secondary={
             <Switch>
               <Route path={['/connections/:serviceID/lan', '/connections/new/:deviceID/:serviceID/lan']}>
@@ -100,138 +109,100 @@ export const Router: React.FC<{ singlePanel?: boolean }> = ({ singlePanel }) => 
               </Route>
             </Switch>
           }
-          singlePanel={singlePanel}
+          layout={layout}
           root={['/connections', '/connections/new']}
         />
       </Route>
-
+      {/* Add */}
+      <Route path="/add/linux">
+        <Panel layout={layout}>
+          <SetupLinuxPage />
+        </Panel>
+      </Route>
+      <Route path="/add/:icon">
+        <Panel layout={layout}>
+          <DownloadDesktopPage />
+        </Panel>
+      </Route>
+      {/* Devices */}
       <Route path="/devices/setup">
         {registered ? (
           <Redirect to={`/devices/${targetDevice.uid}`} />
         ) : isPortal() ? (
-          <Redirect to={`/devices/add/${os}`} />
+          <Redirect to={`/add/${os}`} />
         ) : (
-          <Panel>
+          <Panel layout={layout}>
             <SetupDevice os={os} />
           </Panel>
         )}
       </Route>
-
       <Route path="/devices/membership">
-        <Panel>
+        <Panel layout={layout}>
           <OrganizationMembershipPage />
         </Panel>
       </Route>
-
-      <Route path="/devices/add/linux">
-        <Panel>
-          <SetupLinuxPage />
-        </Panel>
-      </Route>
-
-      <Route path="/devices/add/:icon">
-        <Panel>
-          <DownloadDesktopPage />
-        </Panel>
-      </Route>
-
       <Route path="/devices/setupWaiting">
-        <Panel>
+        <Panel layout={layout}>
           <SetupWaiting os={os} targetDevice={targetDevice} />
         </Panel>
       </Route>
-
       <Route path="/devices/restore">
-        <Panel singlePanel={singlePanel}>
+        <Panel layout={layout}>
           <DevicesPage restore />
         </Panel>
       </Route>
-
       <Route path="/devices/select">
-        <Panel singlePanel={singlePanel}>
+        <Panel layout={layout}>
           <DevicesPage select />
         </Panel>
       </Route>
-
       <Route path={['/devices', '/devices/welcome']} exact>
         {remoteUI ? (
           registered ? (
             <Redirect to={`/devices/${targetDevice.uid}`} />
           ) : (
-            <Panel>
+            <Panel layout={layout}>
               <SetupDevice os={os} />
             </Panel>
           )
         ) : (
-          <Panel singlePanel={singlePanel}>
+          <Panel layout={layout}>
             <DevicesPage />
           </Panel>
         )}
       </Route>
-
       <Route path="/devices/:deviceID/:serviceID?">
-        <DeviceRouter singlePanel={singlePanel} />
+        <DeviceRouter layout={layout} />
       </Route>
-
+      <Route path="/logs">
+        <Panel layout={layout}>
+          <UserLogPage />
+        </Panel>
+      </Route>
+      {/* Announcements */}
       <Route path="/announcements">
-        <Panel>
+        <Panel layout={layout}>
           <AnnouncementsPage />
         </Panel>
       </Route>
-
+      {/* Feedback */}
       <Route path="/shareFeedback">
-        <Panel>
+        <Panel layout={layout}>
           <ShareFeedback />
         </Panel>
       </Route>
-
+      {/* Settings */}
       <Route path="/settings">
         <DynamicPanel
-          primary={<SettingsPage singlePanel={singlePanel} />}
+          primary={<SettingsPage />}
           secondary={
             <Switch>
-              <Route path={['/settings/membership/share', '/settings/access/share']}>
-                <AccountSharePage />
-              </Route>
-
-              <Route path="/settings/organization/share">
-                <OrganizationAddPage />
-              </Route>
-
-              <Route path="/settings/organization">
-                <OrganizationPage />
-              </Route>
-
-              <Route path="/settings/access">
-                <AccountAccessPage />
-              </Route>
-
-              <Route path="/settings/logs">
-                <UserLogPage />
-              </Route>
-
-              <Route path="/settings/tags">
-                <TagsPage />
-              </Route>
-
-              <Route path="/settings/plans">
-                <PlansPage />
-              </Route>
-
-              <Route path="/settings/reports">
-                <ReportsPage />
-              </Route>
-
               <Route path="/settings/notifications">
                 <NotificationsPage />
               </Route>
 
-              <Route path="/settings/licensing">
-                <LicensingPage />
-              </Route>
-
-              <Route path="/settings/billing">
-                <BillingPage />
+              <Route path="/settings/reports">
+                <ReportsPage />
               </Route>
 
               <Route path="/settings/test">
@@ -243,13 +214,89 @@ export const Router: React.FC<{ singlePanel?: boolean }> = ({ singlePanel }) => 
               </Route>
             </Switch>
           }
-          singlePanel={singlePanel}
-          root={['/settings']}
+          layout={layout}
+          root="/settings"
         />
       </Route>
+      {/* Organization */}
+      <Route path={['/organization/roles', '/organization/roles/:roleID']}>
+        <DynamicPanel
+          primary={<OrganizationRolesPage />}
+          secondary={
+            <Route path="/organization/roles/:roleID">
+              <OrganizationRolePage />
+            </Route>
+          }
+          layout={layout}
+          root="/organization"
+        />
+      </Route>
+      s
+      <Route path="/organization/empty">
+        <Panel layout={layout}>
+          <OrganizationEmptyPage />
+        </Panel>
+      </Route>
+      <Route path="/organization">
+        <DynamicPanel
+          primary={<OrganizationPage />}
+          secondary={
+            <Switch>
+              <Route path="/organization/share">
+                <OrganizationAddPage />
+              </Route>
 
-      <Route path="/">
-        <Redirect to="/devices" />
+              <Route path="/organization/saml">
+                <OrganizationSettingsPage />
+              </Route>
+
+              <Route path="/organization/tags">
+                <TagsPage />
+              </Route>
+
+              <Route path="/organization">
+                <OrganizationMembersPage />
+              </Route>
+            </Switch>
+          }
+          layout={layout}
+          root="/organization"
+        />
+      </Route>
+      {/* Account */}
+      <Route path="/account">
+        <DynamicPanel
+          primary={<AccountPage />}
+          secondary={
+            <Switch>
+              <Route path="/account/security">
+                <SecurityPage />
+              </Route>
+
+              <Route path="/account/plans">
+                <PlansPage />
+              </Route>
+
+              <Route path="/account/licensing">
+                <LicensingPage />
+              </Route>
+
+              <Route path="/account/billing">
+                <BillingPage />
+              </Route>
+
+              <Route path="/account/accessKey">
+                <AccessKeyPage />
+              </Route>
+
+              <Route path={['/account', '/account/overview']}>
+                <ProfilePage />
+              </Route>
+            </Switch>
+          }
+          layout={layout}
+          root={['/account']}
+        />
       </Route>
     </Switch>
   )

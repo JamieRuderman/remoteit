@@ -1,5 +1,6 @@
 import React from 'react'
 import { makeStyles } from '@material-ui/core/styles'
+import { getDeviceModel } from '../../models/accounts'
 import { useSelector, useDispatch } from 'react-redux'
 import { ApplicationState, Dispatch } from '../../store'
 import { DEMO_DEVICE_CLAIM_CODE } from '../../shared/constants'
@@ -15,7 +16,7 @@ export const DeviceListEmpty: React.FC = () => {
   const css = useStyles()
   const { devices } = useDispatch<Dispatch>()
   const { noResults, userAccount, claiming } = useSelector((state: ApplicationState) => ({
-    noResults: (state.devices.searched || selectIsFiltered(state)) && !state.devices.results,
+    noResults: (getDeviceModel(state).searched || selectIsFiltered(state)) && !getDeviceModel(state).results,
     userAccount: isUserAccount(state),
     claiming: state.ui.claiming,
   }))
@@ -49,12 +50,13 @@ export const DeviceListEmpty: React.FC = () => {
                 className={css.button}
                 disabled={claiming}
               >
-                <Icon name={claiming ? 'spinner-third' : 'plus'} spin={claiming} type="solid" inlineLeft /> GUEST VPC
+                <Icon name={claiming ? 'spinner-third' : 'plus'} spin={claiming} type="solid" inlineLeft /> Sample
+                Device
               </Button>
             </GuideStep>
           </GuideStep>
           <Typography variant="body2" align="center" color="textSecondary">
-            Try our AWS example system. <br />
+            Try our AWS Guest VPC device. <br />
             Our device will be shared to you and appear in your device list.
           </Typography>
         </>

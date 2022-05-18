@@ -9,6 +9,7 @@ import { notify } from './Notifications'
 import { selectById } from '../models/devices'
 import { combinedName } from '../shared/nameHelper'
 import { setConnection, findLocalConnection } from '../helpers/connectionHelper'
+import { getActiveAccountId } from '../models/accounts'
 import { graphQLGetErrors } from './graphQL'
 import { agent } from '../services/Browser'
 import { emit } from './Controller'
@@ -27,6 +28,7 @@ class CloudController {
     }
     this.connect()
     network.on('connect', this.reconnect)
+    network.on('disconnect', this.close)
     this.startPing()
     this.initialized = true
   }
@@ -40,13 +42,19 @@ class CloudController {
       this.log('CLOUD SOCKET ALREADY CONNECTED')
       return
     }
+
     const url = getWebSocketURL()
+
+    if (!navigator.onLine || !url) return
+
     this.log('CONNECT CLOUD SOCKET', url, this.socket)
-    this.socket = new ReconnectingWebSocket(url, [], {})
-    this.socket.addEventListener('open', this.onOpen)
-    this.socket.addEventListener('message', this.onMessage)
-    this.socket.addEventListener('close', this.onClose)
-    this.socket.addEventListener('error', this.onError)
+    if (url) {
+      this.socket = new ReconnectingWebSocket(url, [], {})
+      this.socket.addEventListener('open', this.onOpen)
+      this.socket.addEventListener('message', this.onMessage)
+      this.socket.addEventListener('close', this.onClose)
+      this.socket.addEventListener('error', this.onError)
+    }
   }
 
   startPing() {
@@ -89,7 +97,10 @@ class CloudController {
   authenticate = async () => {
     const message = JSON.stringify({
       action: 'subscribe',
-      headers: { authorization: await getToken(), 'User-Agent': `remoteit/${version} ${agent()}` },
+      headers: {
+        authorization: await getToken(),
+        'User-Agent': `remoteit/${version} ${agent()}`,
+      },
       query: `
       {
         event {
@@ -208,7 +219,7 @@ class CloudController {
   }
 
   update(event: ICloudEvent) {
-    const { accounts, sessions, licensing, ui, devices } = store.dispatch
+    const { accounts, sessions, plans, ui, devices } = store.dispatch
 
     switch (event.type) {
       case 'DEVICE_STATE':
@@ -239,7 +250,8 @@ class CloudController {
 
           // if new unknown device discovered
           if (!target.device && target.id === target.deviceId && state === 'active') {
-            if (store.getState().devices.registrationCommand) {
+            const state = store.getState()
+            if (target.owner?.id === getActiveAccountId(state) && state.ui.registrationCommand) {
               ui.set({
                 redirect: `/devices/${target.deviceId}`,
                 successMessage: `${target.name} registered successfully!`,
@@ -298,7 +310,7 @@ class CloudController {
 
       case 'LICENSE_UPDATED':
         this.log('LICENSE UPDATED EVENT', event)
-        licensing.updated()
+        setTimeout(plans.updated, 2000) // because event comes in before plan is fully updated
         break
     }
     return event
