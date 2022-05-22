@@ -54,7 +54,7 @@
   },
   "homepage": "https://remote.it",
   "repository": {
-    "url": "git+ssh://git@github.com/remoteit/desktop.git",
+    "url": "git+ssh://git@github.com/JamieRuderman/remoteit.git",
     "type": "git"
   },
   "license": "MIT",
@@ -73,8 +73,6 @@
       "github"
     ],
     "win": {
-      "certificateSubjectName": "remot3.it, Inc.",
-      "certificateSha1": "9E10BD8F0629D58681CFE5EB5522EA297565FFA4",
       "artifactName": "${productName}-installer.${ext}",
       "target": [
         {
